@@ -12,7 +12,6 @@ api.interceptors.request.use(c => {
   return c
 })
 
-// Иконки
 const IconEdit = () => <span>✏️</span>
 const IconDel = () => <span>🗑️</span>
 
@@ -46,6 +45,7 @@ function Login({ onLogin }) {
 const inp = {width:'100%',padding:'10px 12px',border:'1px solid #ddd',borderRadius:6,marginBottom:10,fontSize:14,outline:'none',boxSizing:'border-box'}
 const sel = {...inp,background:'#fff',cursor:'pointer'}
 const lbl = {display:'block',fontSize:12,color:'#555',marginBottom:4,fontWeight:500}
+const btnAct = {background:'none',border:'none',cursor:'pointer',fontSize:16,padding:4,color:'#185fa5',display:'flex',alignItems:'center'}
 
 const NAV = [{to:'/funnel',label:'Воронка'},{to:'/requests',label:'Заявки'},{to:'/clients',label:'Клиенты'},{to:'/samples',label:'Пробы'},{to:'/tests',label:'Испытания'},{to:'/protocols',label:'Протоколы'}]
 
@@ -60,7 +60,7 @@ function Layout({ user, onLogout }) {
         </div>
         <nav style={{marginTop:'1rem',flex:1}}>
           {NAV.map(n=>(
-            <NavLink key={n.to} to={n.to} style={({isActive})=>({display:'block',padding:'10px 1.25rem',fontSize:14,color:isActive?'#fff':'rgba(255,255,255,0.6)',background:isActive?'rgba(255,255,255,0.1)':'transparent',textDecoration:'none',borderLeft:isActive?'3px solid #7eb3e8':'3px solid transparent'})}>
+            <NavLink key="{n.to}" to="{n.to}" style="{({isActive})=">({display:'block',padding:'10px 1.25rem',fontSize:14,color:isActive?'#fff':'rgba(255,255,255,0.6)',background:isActive?'rgba(255,255,255,0.1)':'transparent',textDecoration:'none',borderLeft:isActive?'3px solid #7eb3e8':'3px solid transparent'})}>
               {n.label}
             </NavLink>
           ))}
@@ -69,13 +69,13 @@ function Layout({ user, onLogout }) {
       </aside>
       <main style={{flex:1,padding:'1.5rem',overflowY:'auto',background:'#f5f6fa'}}>
         <Routes>
-          <Route path="/requests"  element={<PageRequests />} />
-          <Route path="/clients"   element={<PageClients />} />
-          <Route path="/samples"   element={<PageSamples />} />
-          <Route path="/tests"     element={<PageTests />} />
-          <Route path="/protocols" element={<PageProtocols />} />
-          <Route path="/funnel" element={<PageFunnel />} />
-          <Route path="*" element={<Navigate to="/requests" />} />
+          <Route path="/requests" element="{<PageRequests"/>} />
+          <Route path="/clients" element="{<PageClients"/>} />
+          <Route path="/samples" element="{<PageSamples"/>} />
+          <Route path="/tests" element="{<PageTests"/>} />
+          <Route path="/protocols" element="{<PageProtocols"/>} />
+          <Route path="/funnel" element="{<PageFunnel"/>} />
+          <Route path="*" element="{<Navigate" to="/requests"/>} />
         </Routes>
       </main>
     </div>
@@ -129,45 +129,18 @@ function SampleForm({ requests, onSave, onCancel, initial }) {
     onSave()
   }
   const row2 = {display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}
-  const row3 = {display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:12}
   return (
     <form onSubmit={submit} style={{background:'#f8f9ff',border:'1px solid #dde3f5',borderRadius:10,padding:'1.25rem',marginBottom:'1rem'}}>
-      <h3 style={{fontSize:14,fontWeight:600,color:'#1a1a2e',marginBottom:'1rem',paddingBottom:8,borderBottom:'1px solid #e8ecf5'}}>
-        {initial?.id ? 'Редактировать пробу' : 'Регистрация новой пробы'}
-      </h3>
-      <div style={{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid #e8ecf5'}}>
-        <div style={row2}>
-          <div>
-            <label style={lbl}>Заявка</label>
-            <select value={f.request_id} onChange={e=>set('request_id',e.target.value)} style={sel}>
-              <option value="">— Без заявки —</option>
-              {requests.map(r=><option key={r.id} value={r.id}>{r.number}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={lbl}>Вид акта</label>
-            <select value={f.act_type} onChange={e=>set('act_type',e.target.value)} style={sel}>
-              <option value="intake">Акт приёма-передачи</option>
-              <option value="sampling">Акт отбора</option>
-            </select>
-          </div>
-        </div>
+      <h3 style={{fontSize:14,fontWeight:600,color:'#1a1a2e',marginBottom:'1rem'}}>{initial?.id ? 'Редактировать пробу' : 'Новая проба'}</h3>
+      <div style={row2}>
+        <div><label style={lbl}>Заявка</label><select value={f.request_id} onChange={e=>set('request_id',e.target.value)} style={sel}><option value="">— Без заявки —</option>{requests.map(r=><option key={r.id} value={r.id}>{r.number}</option>)}</select></div>
+        <div><label style={lbl}>Вид акта</label><select value={f.act_type} onChange={e=>set('act_type',e.target.value)} style={sel}><option value="intake">Акт приёма-передачи</option><option value="sampling">Акт отбора</option></select></div>
       </div>
-      <div style={{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid #e8ecf5'}}>
-        <div style={row2}>
-          <div>
-            <label style={lbl}>Вид материала *</label>
-            <select value={f.material_type} onChange={e=>set('material_type',e.target.value)} style={sel} required>
-              {MATERIAL_TYPES.map(m=><option key={m.v} value={m.v}>{m.l}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={lbl}>Наименование *</label>
-            <input value={f.material_name} onChange={e=>set('material_name',e.target.value)} style={inp}/>
-          </div>
-        </div>
+      <div style={row2}>
+        <div><label style={lbl}>Вид материала *</label><select value={f.material_type} onChange={e=>set('material_type',e.target.value)} style={sel} required>{MATERIAL_TYPES.map(m=><option key={m.v} value={m.v}>{m.l}</option>)}</select></div>
+        <div><label style={lbl}>Наименование *</label><input value={f.material_name} onChange={e=>set('material_name',e.target.value)} style={inp} required/></div>
       </div>
-      <div style={{display:'flex',gap:8}}><Btn type="submit">Сохранить</Btn><Btn variant="secondary" onClick={onCancel}>Отмена</Btn></div>
+      <div style={{display:'flex',gap:8}}><Btn type="submit">Сохранить</Btn><Btn variant="secondary" onClick="{onCancel}">Отмена</Btn></div>
     </form>
   )
 }
@@ -183,15 +156,15 @@ function PageSamples() {
 
   return (
     <>
-      {showForm && <SampleForm requests={requests} onSave={onSave} onCancel={()=>{setShowForm(false);setEditing(null)}} initial={editing}/>}
-      <Card title={`Пробы (${rows.length})`} action={!showForm && <Btn onClick={()=>{setEditing(null);setShowForm(true)}}>+ Новая проба</Btn>}>
-        <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Поиск..." style={{...inp,maxWidth:300}}/>
+      {showForm && <SampleForm requests="{requests}" onSave="{onSave}" onCancel="{()=">{setShowForm(false);setEditing(null)}} initial={editing}/>}
+      <Card title="{`Пробы" (${rows.length})`} action="{!showForm" && <Btn onClick="{()=">{setEditing(null);setShowForm(true)}}>+ Новая проба</Btn>}>
+        <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Поиск по номеру..." style={{...inp,maxWidth:300}}/>
         <table style={{width:'100%',borderCollapse:'collapse'}}>
           <thead><tr><Th>Лаб. №</Th><Th>Материал</Th><Th>Дата рег.</Th><Th>Статус</Th><Th>Действия</Th></tr></thead>
           <tbody>{rows.filter(r=>!filter || r.lab_number?.includes(filter)).map(r=>(
             <tr key={r.id} style={{borderBottom:'1px solid #f5f5f5'}}>
               <Td bold>{r.lab_number}</Td><Td>{r.material_name}</Td><Td>{r.registration_date}</Td>
-              <Td><Badge s={r.stage || 'new_request'}/></Td>
+              <Td><Badge s="{r.stage" || 'new_request'}/></Td>
               <Td>
                 <div style={{display:'flex',gap:4}}>
                   <button onClick={()=>{setEditing(r);setShowForm(true)}} title="Изменить" style={btnAct}><IconEdit/></button>
@@ -209,7 +182,7 @@ function PageSamples() {
 function PageRequests() {
   const [rows,setRows]=useState([]); const [clients,setClients]=useState([])
   const [show,setShow]=useState(false); const [editing,setEditing]=useState(null)
-  const [form,setForm]=useState({client_id:'',material_type:'abs_58401',test_types:'',quantity:1})
+  const [form,setForm]=useState({client_id:'',material_type:'abs_58401',test_types:'',quantity:1,notes:''})
   
   const load = () => { api.get('/requests').then(r=>setRows(r.data)); api.get('/clients').then(r=>setClients(r.data)) }
   useEffect(load, [])
@@ -220,16 +193,21 @@ function PageRequests() {
     setShow(false); setEditing(null); load()
   }
   const del = async (id) => { if(window.confirm('Удалить заявку?')) { await api.delete(`/requests/${id}`); load() } }
+  const row2 = {display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}
 
   return (
-    <Card title={`Заявки (${rows.length})`} action={<Btn onClick={()=>{setEditing(null);setForm({client_id:'',material_type:'abs_58401',test_types:'',quantity:1});setShow(true)}}>+ Новая заявка</Btn>}>
+    <Card title="{`Заявки" (${rows.length})`} action="{<Btn" onClick="{()=">{setEditing(null);setForm({client_id:'',material_type:'abs_58401',test_types:'',quantity:1,notes:''});setShow(true)}}>+ Новая заявка</Btn>}>
       {show && (
-        <div style={{background:'#f8f9ff',padding:'1rem',borderRadius:10,marginBottom:10}}>
-          <select value={form.client_id} onChange={e=>setForm({...form,client_id:e.target.value})} style={sel}>
-            <option value="">Выберите клиента</option>
-            {clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <div style={{display:'flex',gap:8,marginTop:10}}><Btn onClick={save}>Сохранить</Btn><Btn variant="secondary" onClick={()=>setShow(false)}>Отмена</Btn></div>
+        <div style={{background:'#f8f9ff',padding:'1.25rem',borderRadius:10,marginBottom:'1rem',border:'1px solid #dde3f5'}}>
+          <div style={row2}>
+            <div><label style={lbl}>Клиент</label><select value={form.client_id} onChange={e=>setForm({...form,client_id:e.target.value})} style={sel}><option value="">Выберите клиента</option>{clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+            <div><label style={lbl}>Материал</label><select value={form.material_type} onChange={e=>setForm({...form,material_type:e.target.value})} style={sel}>{MATERIAL_TYPES.map(m=><option key={m.v} value={m.v}>{m.l}</option>)}</select></div>
+          </div>
+          <div style={row2}>
+            <div><label style={lbl}>Испытания</label><input value={form.test_types} onChange={e=>setForm({...form,test_types:e.target.value})} style={inp}/></div>
+            <div><label style={lbl}>Количество</label><input type="number" value={form.quantity} onChange={e=>setForm({...form,quantity:+e.target.value})} style={inp}/></div>
+          </div>
+          <div style={{display:'flex',gap:8}}><Btn onClick="{save}">Сохранить</Btn><Btn variant="secondary" onClick="{()=">setShow(false)}>Отмена</Btn></div>
         </div>
       )}
       <table style={{width:'100%',borderCollapse:'collapse'}}>
@@ -237,7 +215,7 @@ function PageRequests() {
         <tbody>{rows.map(r=>(
           <tr key={r.id}>
             <Td bold>{r.number}</Td><Td>{clients.find(c=>c.id===r.client_id)?.name}</Td>
-            <Td><Badge s={r.status}/></Td>
+            <Td><Badge s="{r.status}"/></Td>
             <Td>
               <div style={{display:'flex',gap:4}}>
                 <button onClick={()=>{setEditing(r);setForm(r);setShow(true)}} title="Изменить" style={btnAct}><IconEdit/></button>
@@ -253,7 +231,7 @@ function PageRequests() {
 
 function PageClients() {
   const [rows,setRows]=useState([]); const [show,setShow]=useState(false); const [editing,setEditing]=useState(null)
-  const [form,setForm]=useState({name:'',inn:'',contact_name:''})
+  const [form,setForm]=useState({name:'',inn:'',kpp:'',contact_name:'',contact_phone:'',contact_email:'',address:''})
   const load = () => api.get('/clients').then(r=>setRows(r.data))
   useEffect(load, [])
   const save = async () => {
@@ -262,13 +240,21 @@ function PageClients() {
     setShow(false); setEditing(null); load()
   }
   const del = async (id) => { if(window.confirm('Удалить клиента?')) { await api.delete(`/clients/${id}`); load() } }
+  const row2 = {display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}
 
   return (
-    <Card title={`Клиенты (${rows.length})`} action={<Btn onClick={()=>{setEditing(null);setForm({name:'',inn:'',contact_name:''});setShow(true)}}>+ Новый клиент</Btn>}>
+    <Card title="{`Клиенты" (${rows.length})`} action="{<Btn" onClick="{()=">{setEditing(null);setForm({name:'',inn:'',kpp:'',contact_name:'',contact_phone:'',contact_email:'',address:''});setShow(true)}}>+ Новый клиент</Btn>}>
       {show && (
-        <div style={{background:'#f8f9ff',padding:'1rem',borderRadius:10,marginBottom:10}}>
-          <input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Название" style={inp}/>
-          <div style={{display:'flex',gap:8}}><Btn onClick={save}>Сохранить</Btn><Btn variant="secondary" onClick={()=>setShow(false)}>Отмена</Btn></div>
+        <div style={{background:'#f8f9ff',padding:'1.25rem',borderRadius:10,marginBottom:'1rem',border:'1px solid #dde3f5'}}>
+          <div style={row2}>
+            <div><label style={lbl}>Название *</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} style={inp} required/></div>
+            <div><label style={lbl}>ИНН</label><input value={form.inn} onChange={e=>setForm({...form,inn:e.target.value})} style={inp}/></div>
+          </div>
+          <div style={row2}>
+            <div><label style={lbl}>Контакт</label><input value={form.contact_name} onChange={e=>setForm({...form,contact_name:e.target.value})} style={inp}/></div>
+            <div><label style={lbl}>Телефон</label><input value={form.contact_phone} onChange={e=>setForm({...form,contact_phone:e.target.value})} style={inp}/></div>
+          </div>
+          <div style={{display:'flex',gap:8}}><Btn onClick="{save}">Сохранить</Btn><Btn variant="secondary" onClick="{()=">setShow(false)}>Отмена</Btn></div>
         </div>
       )}
       <table style={{width:'100%',borderCollapse:'collapse'}}>
@@ -289,26 +275,23 @@ function PageClients() {
   )
 }
 
-const btnAct = {background:'none',border:'none',cursor:'pointer',fontSize:16,padding:4,color:'#185fa5',display:'flex',alignItems:'center'}
-
 function PageTests(){
   const [rows,setRows]=useState([]); const [showForm,setShowForm]=useState(false)
   const [selSampleId,setSelSampleId]=useState(null); const [samples,setSamples]=useState([])
   const load=()=>api.get('/tests').then(r=>setRows(r.data))
   useEffect(()=>{load();api.get('/samples').then(r=>setSamples(r.data))},[])
-  if(showForm) return <div style={{background:"#fff",padding:"1.5rem"}}><TestABS sampleId={selSampleId} onClose={()=>{setShowForm(false);load()}}/></div>
+  if(showForm) return <div style={{background:"#fff",padding:"1.5rem"}}><TestABS sampleId="{selSampleId}" onClose="{()=">{setShowForm(false);load()}}/></div>
   return(
-    <Card title={`Испытания (${rows.length})`} action={
-      <div style={{display:"flex",gap:8}} middle>
-        <select onChange={e=>setSelSampleId(+e.target.value)} style={sel}><option value="">Проба...</option>{samples.map(s=><option key={s.id} value={s.id}>{s.lab_number}</option>)}</select>
-        <Btn onClick={()=>setShowForm(true)}>+ Добавить</Btn>
+    <Card title="{`Испытания" (${rows.length})`} action="{" <div style="{{display:"flex",gap:8,alignItems:"center"}}">
+        <select onChange={e=>setSelSampleId(+e.target.value)} style={{...sel,marginBottom:0}}><option value="">Выбрать пробу...</option>{samples.map(s=><option key={s.id} value={s.id}>{s.lab_number}</option>)}</select>
+        <Btn onClick="{()=">setShowForm(true)}>+ Добавить</Btn>
       </div>
     }>
       <table style={{width:"100%"}}>
         <thead><tr><Th>ID</Th><Th>Проба</Th><Th>Статус</Th><Th>Действия</Th></tr></thead>
         <tbody>{rows.map(r=>(
-          <tr key={r.id}><Td>#{r.id}</Td><Td>{samples.find(s=>s.id===r.sample_id)?.lab_number}</Td><Td><Badge s={r.status}/></Td>
-            <Td><button onClick={()=>{setSelSampleId(r.sample_id);setShowForm(true)}} style={btnAct}><IconEdit/></button></Td>
+          <tr key={r.id}><Td>#{r.id}</Td><Td>{samples.find(s=>s.id===r.sample_id)?.lab_number}</Td><Td><Badge s="{r.status}"/></Td>
+            <Td><button onClick={()=>{setSelSampleId(r.sample_id);setShowForm(true)}} style={btnAct} title="Открыть"><IconEdit/></button></Td>
           </tr>
         ))}</tbody>
       </table>
@@ -320,10 +303,10 @@ function PageProtocols() {
   const [rows,setRows]=useState([])
   useEffect(()=>{ api.get('/protocols').then(r=>setRows(r.data)) },[])
   return (
-    <Card title={`Протоколы (${rows.length})`}>
+    <Card title="{`Протоколы" (${rows.length})`}>
       <table style={{width:'100%'}}>
         <thead><tr><Th>№</Th><Th>Дата</Th><Th>Статус</Th></tr></thead>
-        <tbody>{rows.map(r=>(<tr key={r.id}><Td bold>{r.number}</Td><Td>{r.created_at?.slice(0,10)}</Td><Td><Badge s={r.status}/></Td></tr>))}</tbody>
+        <tbody>{rows.map(r=>(<tr key={r.id}><Td bold>{r.number}</Td><Td>{r.created_at?.slice(0,10)}</Td><Td><Badge s="{r.status}"/></Td></tr>))}</tbody>
       </table>
     </Card>
   )
@@ -333,10 +316,10 @@ export default function App() {
   const [user,setUser] = useState(()=>{ const t=localStorage.getItem('token'); return t?JSON.parse(localStorage.getItem('user')||'null'):null })
   const login = u => { setUser(u); localStorage.setItem('user',JSON.stringify(u)) }
   const logout = () => { setUser(null); localStorage.removeItem('token'); localStorage.removeItem('user') }
-  if (!user) return <Login onLogin={login}/>
+  if (!user) return <Login onLogin="{login}"/>
   return (
-    <AuthCtx.Provider value={user}>
-      <BrowserRouter><Layout user={user} onLogout={logout}/></BrowserRouter>
+    <AuthCtx.Provider value="{user}">
+      <BrowserRouter><Layout user="{user}" onLogout="{logout}"/></BrowserRouter>
     </AuthCtx.Provider>
   )
 }
