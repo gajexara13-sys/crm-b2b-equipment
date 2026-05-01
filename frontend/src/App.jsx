@@ -1,0 +1,456 @@
+import React, { useState, useEffect, createContext } from 'react'
+import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom'
+import axios from 'axios'
+import TestABS from './TestABS'
+import PageFunnel from './Funnel'
+
+const AuthCtx = createContext(null)
+const api = axios.create({ baseURL: '/api' })
+api.interceptors.request.use(c => {
+  const t = localStorage.getItem('token')
+  if (t) c.headers.Authorization = `Bearer ${t}`
+  return c
+})
+
+function Login({ onLogin }) {
+  const [email, setEmail] = useState(''); const [pwd, setPwd] = useState(''); const [err, setErr] = useState('')
+  const submit = async e => {
+    e.preventDefault(); setErr('')
+    try {
+      const f = new FormData(); f.append('username', email); f.append('password', pwd)
+      const r = await api.post('/auth/login', f)
+      localStorage.setItem('token', r.data.access_token)
+      onLogin(r.data.user)
+    } catch { setErr('Неверный email или пароль') }
+  }
+  return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#1a1a2e'}}>
+      <div style={{background:'#fff',borderRadius:12,padding:'2rem',width:360,boxShadow:'0 4px 24px rgba(0,0,0,0.15)'}}>
+        <h2 style={{marginBottom:'0.25rem',color:'#1a1a2e'}}>Lab CRM</h2>
+        <p style={{color:'#666',fontSize:13,marginBottom:'1.5rem'}}>ДСИЛ Башстройинвест</p>
+        {err && <div style={{background:'#fee',color:'#c00',padding:'8px 12px',borderRadius:6,marginBottom:12,fontSize:13}}>{err}</div>}
+        <form onSubmit={submit}>
+          <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" type="email" required style={inp}/>
+          <input value={pwd} onChange={e=>setPwd(e.target.value)} placeholder="Пароль" type="password" required style={{...inp,marginBottom:16}}/>
+          <button type="submit" style={{width:'100%',padding:'10px',background:'#185fa5',color:'#fff',border:'none',borderRadius:6,fontSize:14,cursor:'pointer'}}>Войти</button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+const inp = {width:'100%',padding:'10px 12px',border:'1px solid #ddd',borderRadius:6,marginBottom:10,fontSize:14,outline:'none',boxSizing:'border-box'}
+const sel = {...inp,background:'#fff',cursor:'pointer'}
+const lbl = {display:'block',fontSize:12,color:'#555',marginBottom:4,fontWeight:500}
+
+const NAV = [{to:'/funnel',label:'Воронка'},{to:'/requests',label:'Заявки'},{to:'/clients',label:'Клиенты'},{to:'/samples',label:'Пробы'},{to:'/tests',label:'Испытания'},{to:'/protocols',label:'Протоколы'}]
+
+function Layout({ user, onLogout }) {
+  return (
+    <div style={{display:'flex',minHeight:'100vh'}}>
+      <aside style={{width:210,background:'#1a1a2e',color:'#fff',padding:'1.5rem 0',flexShrink:0,display:'flex',flexDirection:'column'}}>
+        <div style={{padding:'0 1.25rem 1.25rem',borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
+          <div style={{fontSize:13,fontWeight:600,color:'#7eb3e8'}}>Lab CRM</div>
+          <div style={{fontSize:11,color:'rgba(255,255,255,0.5)',marginTop:2}}>{user?.name}</div>
+          <div style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:1}}>{user?.role}</div>
+        </div>
+        <nav style={{marginTop:'1rem',flex:1}}>
+          {NAV.map(n=>(
+            <NavLink key={n.to} to={n.to} style={({isActive})=>({display:'block',padding:'10px 1.25rem',fontSize:14,color:isActive?'#fff':'rgba(255,255,255,0.6)',background:isActive?'rgba(255,255,255,0.1)':'transparent',textDecoration:'none',borderLeft:isActive?'3px solid #7eb3e8':'3px solid transparent'})}>
+              {n.label}
+            </NavLink>
+          ))}
+        </nav>
+        <button onClick={onLogout} style={{margin:'0 1.25rem 1.5rem',background:'transparent',border:'1px solid rgba(255,255,255,0.2)',color:'rgba(255,255,255,0.5)',padding:'8px 12px',borderRadius:6,fontSize:12,cursor:'pointer'}}>Выйти</button>
+      </aside>
+      <main style={{flex:1,padding:'1.5rem',overflowY:'auto',background:'#f5f6fa'}}>
+        <Routes>
+          <Route path="/requests"  element={<PageRequests />} />
+          <Route path="/clients"   element={<PageClients />} />
+          <Route path="/samples"   element={<PageSamples />} />
+          <Route path="/tests"     element={<PageTests />} />
+          <Route path="/protocols" element={<PageProtocols />} />
+          <Route path="/funnel" element={<PageFunnel />} />
+            <Route path="*" element={<Navigate to="/requests" />} />
+        </Routes>
+      </main>
+    </div>
+  )
+}
+
+const STATUS_LABELS = {new:'Новая',kp:'КП отправлено',contract:'Договор',in_progress:'В работе',done:'Завершена',cancelled:'Отменена',draft:'Черновик',review:'На проверке',signed:'Подписан',sent:'Отправлен',registered:'Зарегистрирована'}
+const STATUS_BG = {new:'#e8f0fe',kp:'#fff3e0',contract:'#e8f5e9',in_progress:'#e3f2fd',done:'#e8f5e9',cancelled:'#fce4ec',draft:'#f5f5f5',review:'#fff3e0',signed:'#e8f5e9',sent:'#e3f2fd',registered:'#e3f2fd'}
+
+function Badge({s}) { return <span style={{fontSize:11,padding:'3px 8px',borderRadius:4,background:STATUS_BG[s]||'#f5f5f5',color:'#333',whiteSpace:'nowrap'}}>{STATUS_LABELS[s]||s}</span> }
+function Card({title,children,action}) {
+  return (
+    <div style={{background:'#fff',borderRadius:10,padding:'1.25rem',marginBottom:'1rem',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
+        <h2 style={{fontSize:16,fontWeight:600,color:'#1a1a2e'}}>{title}</h2>
+        {action}
+      </div>
+      {children}
+    </div>
+  )
+}
+function Btn({onClick,children,variant='primary',type='button'}) {
+  return <button type={type} onClick={onClick} style={{padding:'8px 16px',borderRadius:6,fontSize:13,cursor:'pointer',border:variant==='primary'?'none':'1px solid #185fa5',background:variant==='primary'?'#185fa5':'transparent',color:variant==='primary'?'#fff':'#185fa5',fontWeight:500}}>{children}</button>
+}
+function Th({children}) { return <th style={{textAlign:'left',padding:'8px 10px',color:'#666',fontWeight:500,fontSize:12,borderBottom:'2px solid #f0f0f0',whiteSpace:'nowrap'}}>{children}</th> }
+function Td({children,bold}) { return <td style={{padding:'8px 10px',fontSize:13,color:bold?'#185fa5':'#333',fontWeight:bold?500:400,borderBottom:'1px solid #f5f5f5'}}>{children||'—'}</td> }
+
+const MATERIAL_TYPES = [
+  {v:'abs_58401',l:'АБС / ЩМАС по ГОСТ Р 58401'},
+  {v:'abs_58406',l:'АБС / ЩМАС по ГОСТ Р 58406'},
+  {v:'pbv',l:'ПБВ по ГОСТ Р 58400.2'},
+  {v:'crushed_stone',l:'Щебень / гравий ГОСТ 32703'},
+  {v:'sand',l:'Песок ГОСТ 32730 / 32824'},
+]
+
+const EMPTY_SAMPLE = {
+  request_id:'', material_type:'abs_58401', material_name:'',
+  material_grade:'', manufacturer:'', sampling_date:'',
+  registration_date: new Date().toISOString().slice(0,10),
+  sampling_location:'', sampled_by:'', sampling_conditions:'', act_type:'intake'
+}
+
+function SampleForm({ requests, onSave, onCancel, initial }) {
+  const [f, setF] = useState(initial || EMPTY_SAMPLE)
+  const set = (k,v) => setF(p=>({...p,[k]:v}))
+  const submit = async e => {
+    e.preventDefault()
+    const payload = {...f, request_id: f.request_id||null}
+    if (initial?.id) await api.put(`/samples/${initial.id}`, payload)
+    else await api.post('/samples', payload)
+    onSave()
+  }
+  const row2 = {display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}
+  const row3 = {display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:12}
+  return (
+    <form onSubmit={submit} style={{background:'#f8f9ff',border:'1px solid #dde3f5',borderRadius:10,padding:'1.25rem',marginBottom:'1rem'}}>
+      <h3 style={{fontSize:14,fontWeight:600,color:'#1a1a2e',marginBottom:'1rem',paddingBottom:8,borderBottom:'1px solid #e8ecf5'}}>
+        {initial?.id ? 'Редактировать пробу' : 'Регистрация новой пробы'}
+      </h3>
+
+      <div style={{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid #e8ecf5'}}>
+        <div style={{fontSize:11,fontWeight:600,color:'#185fa5',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Связь с заявкой</div>
+        <div style={row2}>
+          <div>
+            <label style={lbl}>Заявка</label>
+            <select value={f.request_id} onChange={e=>set('request_id',e.target.value)} style={sel}>
+              <option value="">— Без заявки —</option>
+              {requests.map(r=><option key={r.id} value={r.id}>{r.number}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Вид акта при приёме</label>
+            <select value={f.act_type} onChange={e=>set('act_type',e.target.value)} style={sel}>
+              <option value="intake">Акт приёма-передачи проб</option>
+              <option value="sampling">Акт отбора проб</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style={{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid #e8ecf5'}}>
+        <div style={{fontSize:11,fontWeight:600,color:'#185fa5',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Материал</div>
+        <div style={row2}>
+          <div>
+            <label style={lbl}>Вид материала *</label>
+            <select value={f.material_type} onChange={e=>set('material_type',e.target.value)} style={sel} required>
+              {MATERIAL_TYPES.map(m=><option key={m.v} value={m.v}>{m.l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Наименование материала *</label>
+            <input value={f.material_name} onChange={e=>set('material_name',e.target.value)} placeholder="Асфальтобетонная смесь горячая мелкозернистая" style={inp}/>
+          </div>
+        </div>
+        <div style={row3}>
+          <div>
+            <label style={lbl}>Тип / Марка</label>
+            <input value={f.material_grade} onChange={e=>set('material_grade',e.target.value)} placeholder="Тип Б, Марка II" style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Изготовитель</label>
+            <input value={f.manufacturer} onChange={e=>set('manufacturer',e.target.value)} placeholder="АО «АсфальтЗавод №1»" style={inp}/>
+          </div>
+          <div/>
+        </div>
+      </div>
+
+      <div style={{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid #e8ecf5'}}>
+        <div style={{fontSize:11,fontWeight:600,color:'#185fa5',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Даты</div>
+        <div style={row3}>
+          <div>
+            <label style={lbl}>Дата отбора пробы</label>
+            <input type="date" value={f.sampling_date} onChange={e=>set('sampling_date',e.target.value)} style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Дата регистрации *</label>
+            <input type="date" value={f.registration_date} onChange={e=>set('registration_date',e.target.value)} style={inp} required/>
+          </div>
+          <div/>
+        </div>
+      </div>
+
+      <div style={{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid #e8ecf5'}}>
+        <div style={{fontSize:11,fontWeight:600,color:'#185fa5',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Место и условия отбора</div>
+        <div style={{marginBottom:12}}>
+          <label style={lbl}>Место отбора пробы *</label>
+          <input value={f.sampling_location} onChange={e=>set('sampling_location',e.target.value)} placeholder="г. Уфа, ул. Кирова, д. 10, км 3+400" style={inp}/>
+        </div>
+        <div style={row2}>
+          <div>
+            <label style={lbl}>Кем отобрана проба</label>
+            <input value={f.sampled_by} onChange={e=>set('sampled_by',e.target.value)} placeholder="Инженер Петров А.В." style={inp}/>
+          </div>
+          <div>
+            <label style={lbl}>Условия при отборе</label>
+            <input value={f.sampling_conditions} onChange={e=>set('sampling_conditions',e.target.value)} placeholder="t воздуха +12°C, без осадков" style={inp}/>
+          </div>
+        </div>
+      </div>
+
+      <div style={{display:'flex',gap:8}}>
+        <Btn type="submit">Сохранить пробу</Btn>
+        <Btn variant="secondary" onClick={onCancel}>Отмена</Btn>
+      </div>
+    </form>
+  )
+}
+
+function PageSamples() {
+  const [rows,setRows] = useState([])
+  const [requests,setRequests] = useState([])
+  const [showForm,setShowForm] = useState(false)
+  const [editing,setEditing] = useState(null)
+  const [filter,setFilter] = useState('')
+
+  const load = () => { api.get('/samples').then(r=>setRows(r.data)) }
+  useEffect(()=>{ load(); api.get('/requests').then(r=>setRequests(r.data)) },[])
+
+  const onSave = () => { setShowForm(false); setEditing(null); load() }
+  const onEdit = s => { setEditing(s); setShowForm(true); window.scrollTo(0,0) }
+
+  const filtered = rows.filter(r =>
+    !filter || r.lab_number?.includes(filter) ||
+    r.material_name?.toLowerCase().includes(filter.toLowerCase()) ||
+    r.sampling_location?.toLowerCase().includes(filter.toLowerCase())
+  )
+
+  const matLabel = v => MATERIAL_TYPES.find(m=>m.v===v)?.l || v
+
+  return (
+    <>
+      {showForm && (
+        <SampleForm requests={requests} onSave={onSave} onCancel={()=>{setShowForm(false);setEditing(null)}} initial={editing}/>
+      )}
+      <Card
+        title={`Пробы (${rows.length})`}
+        action={!showForm && <Btn onClick={()=>{setEditing(null);setShowForm(true)}}>+ Новая проба</Btn>}
+      >
+        <div style={{marginBottom:12}}>
+          <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Поиск по номеру, материалу, месту отбора..." style={{...inp,marginBottom:0,maxWidth:400}}/>
+        </div>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+            <thead><tr>
+              <Th>Лаб. №</Th><Th>Материал</Th><Th>Тип/Марка</Th>
+              <Th>Место отбора</Th><Th>Дата отбора</Th><Th>Дата рег.</Th>
+              <Th>Статус</Th><Th>Действия</Th>
+            </tr></thead>
+            <tbody>
+              {filtered.map(r=>(
+                <tr key={r.id} style={{borderBottom:'1px solid #f5f5f5'}}>
+                  <Td bold>{r.lab_number}</Td>
+                  <Td>{r.material_name || matLabel(r.material_type)}</Td>
+                  <Td>{r.material_grade}</Td>
+                  <Td>{r.sampling_location}</Td>
+                  <Td>{r.sampling_date}</Td>
+                  <Td>{r.registration_date}</Td>
+                  <td style={{padding:'8px 10px',borderBottom:'1px solid #f5f5f5'}}>
+{(()=>{const st=STAGE_LABELS[r.stage||'new_request']||STAGE_LABELS['new_request'];return <span style={{fontSize:11,padding:'3px 8px',borderRadius:4,background:st.bg,color:st.color,whiteSpace:'nowrap',fontWeight:500}}>{st.label}</span>})()}
+</td>
+                  <td style={{padding:'8px 10px',borderBottom:'1px solid #f5f5f5'}}>
+                    <button onClick={()=>onEdit(r)} style={{fontSize:12,padding:'4px 10px',borderRadius:4,border:'1px solid #ddd',background:'#fff',cursor:'pointer',color:'#185fa5'}}>Изменить</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {filtered.length===0 && <p style={{color:'#999',textAlign:'center',padding:'2rem',fontSize:13}}>{filter?'Ничего не найдено':'Проб пока нет — нажмите «+ Новая проба»'}</p>}
+      </Card>
+    </>
+  )
+}
+
+
+const STAGE_LABELS={
+  new_request:{label:'Новая заявка',color:'#6366f1',bg:'#eef2ff'},
+  negotiation:{label:'Согласование',color:'#f59e0b',bg:'#fffbeb'},
+  contract:{label:'Договор и счёт',color:'#10b981',bg:'#ecfdf5'},
+  waiting_samples:{label:'Ожидание проб',color:'#3b82f6',bg:'#eff6ff'},
+  in_work:{label:'В работе',color:'#8b5cf6',bg:'#f5f3ff'},
+  waiting_payment:{label:'Ожидание оплаты',color:'#ef4444',bg:'#fef2f2'},
+  results:{label:'Выдача результатов',color:'#06b6d4',bg:'#ecfeff'},
+  upd:{label:'Подписание УПД',color:'#22c55e',bg:'#f0fdf4'},
+}
+function PageRequests() {
+  const [rows,setRows]=useState([]); const [show,setShow]=useState(false)
+  const [clients,setClients]=useState([])
+  const [form,setForm]=useState({client_id:'',material_type:'abs_58401',test_types:'',quantity:1,notes:''})
+  useEffect(()=>{ api.get('/requests').then(r=>setRows(r.data)); api.get('/clients').then(r=>setClients(r.data)) },[])
+  const save = async () => { await api.post('/requests',form); setShow(false); api.get('/requests').then(r=>setRows(r.data)) }
+  return (
+    <Card title={`Заявки (${rows.length})`} action={<Btn onClick={()=>setShow(true)}>+ Новая заявка</Btn>}>
+      {show && (
+        <div style={{background:'#f8f9ff',border:'1px solid #dde3f5',borderRadius:10,padding:'1.25rem',marginBottom:'1rem'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+            <div><label style={lbl}>Клиент</label>
+              <select value={form.client_id} onChange={e=>setForm({...form,client_id:e.target.value})} style={sel}>
+                <option value="">Выберите клиента</option>
+                {clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div><label style={lbl}>Вид материала</label>
+              <select value={form.material_type} onChange={e=>setForm({...form,material_type:e.target.value})} style={sel}>
+                {MATERIAL_TYPES.map(m=><option key={m.v} value={m.v}>{m.l}</option>)}
+              </select>
+            </div>
+            <div><label style={lbl}>Виды испытаний</label>
+              <input value={form.test_types} onChange={e=>setForm({...form,test_types:e.target.value})} placeholder="Полный комплекс по ГОСТ" style={inp}/>
+            </div>
+            <div><label style={lbl}>Количество проб</label>
+              <input value={form.quantity} onChange={e=>setForm({...form,quantity:+e.target.value})} type="number" min="1" style={inp}/>
+            </div>
+          </div>
+          <textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Примечания" rows={2} style={{...inp,resize:'vertical'}}/>
+          <div style={{display:'flex',gap:8,marginTop:4}}><Btn onClick={save}>Сохранить</Btn><Btn variant="secondary" onClick={()=>setShow(false)}>Отмена</Btn></div>
+        </div>
+      )}
+      <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+        <thead><tr><Th>№</Th><Th>Клиент</Th><Th>Материал</Th><Th>Кол-во</Th><Th>Статус</Th><Th>Дата</Th></tr></thead>
+        <tbody>{rows.map(r=>(
+          <tr key={r.id}>
+            <Td bold>{r.number}</Td>
+            <Td>{clients.find(c=>c.id===r.client_id)?.name}</Td>
+            <Td>{MATERIAL_TYPES.find(m=>m.v===r.material_type)?.l||r.material_type}</Td>
+            <Td>{r.quantity}</Td>
+            <td style={{padding:'8px 10px',borderBottom:'1px solid #f5f5f5'}}><Badge s={r.status}/></td>
+            <Td>{r.created_at?.slice(0,10)}</Td>
+          </tr>
+        ))}</tbody>
+      </table>
+      {rows.length===0 && <p style={{color:'#999',textAlign:'center',padding:'2rem',fontSize:13}}>Заявок пока нет</p>}
+    </Card>
+  )
+}
+
+function PageClients() {
+  const [rows,setRows]=useState([]); const [show,setShow]=useState(false)
+  const [form,setForm]=useState({name:'',inn:'',kpp:'',contact_name:'',contact_phone:'',contact_email:'',address:''})
+  useEffect(()=>{ api.get('/clients').then(r=>setRows(r.data)) },[])
+  const save = async () => { await api.post('/clients',form); setShow(false); api.get('/clients').then(r=>setRows(r.data)) }
+  const fields = [['name','Название организации *',true],['inn','ИНН'],['kpp','КПП'],['contact_name','Контактное лицо'],['contact_phone','Телефон'],['contact_email','Email'],['address','Юридический адрес']]
+  return (
+    <Card title={`Клиенты (${rows.length})`} action={<Btn onClick={()=>setShow(true)}>+ Новый клиент</Btn>}>
+      {show && (
+        <div style={{background:'#f8f9ff',border:'1px solid #dde3f5',borderRadius:10,padding:'1.25rem',marginBottom:'1rem'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+            {fields.map(([k,p,req])=>(
+              <div key={k}><label style={lbl}>{p}</label>
+                <input value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} placeholder={p} style={inp} required={!!req}/>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:8}}><Btn onClick={save}>Сохранить</Btn><Btn variant="secondary" onClick={()=>setShow(false)}>Отмена</Btn></div>
+        </div>
+      )}
+      <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+        <thead><tr><Th>Организация</Th><Th>ИНН</Th><Th>Контакт</Th><Th>Телефон</Th><Th>Email</Th></tr></thead>
+        <tbody>{rows.map(r=>(
+          <tr key={r.id}>
+            <Td bold>{r.name}</Td><Td>{r.inn}</Td><Td>{r.contact_name}</Td><Td>{r.contact_phone}</Td><Td>{r.contact_email}</Td>
+          </tr>
+        ))}</tbody>
+      </table>
+      {rows.length===0 && <p style={{color:'#999',textAlign:'center',padding:'2rem',fontSize:13}}>Клиентов пока нет</p>}
+    </Card>
+  )
+}
+
+function PageTests(){
+  const [rows,setRows]=useState([])
+  const [showForm,setShowForm]=useState(false)
+  const [selSampleId,setSelSampleId]=useState(null)
+  const [samples,setSamples]=useState([])
+  const load=()=>api.get('/tests').then(r=>setRows(r.data))
+  useEffect(()=>{load();api.get('/samples').then(r=>setSamples(r.data))},[])
+  const tLabel=t=>t==="gost_58401"?"ГОСТ Р 58401":t==="gost_58406"?"ГОСТ Р 58406":t
+  if(showForm)return(
+    <div style={{background:"#fff",borderRadius:10,padding:"1.5rem",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
+      <TestABS sampleId={selSampleId} onClose={()=>{setShowForm(false);load()}}/>
+    </div>
+  )
+  return(
+    <Card title={`Карточки испытаний (${rows.length})`} action={
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        <select onChange={e=>setSelSampleId(+e.target.value||null)} style={{padding:"7px 10px",borderRadius:6,border:"1px solid #ddd",fontSize:13}}>
+          <option value="">Выберите пробу</option>
+          {samples.map(s=><option key={s.id} value={s.id}>{s.lab_number} — {s.material_name||s.material_type}</option>)}
+        </select>
+        <Btn onClick={()=>setShowForm(true)}>+ Новая карточка</Btn>
+      </div>
+    }>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+        <thead><tr><Th>ID</Th><Th>Проба</Th><Th>ГОСТ</Th><Th>Дата</Th><Th>Статус</Th><Th>Действия</Th></tr></thead>
+        <tbody>{rows.map(r=>(
+          <tr key={r.id}>
+            <Td bold>#{r.id}</Td>
+            <Td>{samples.find(s=>s.id===r.sample_id)?.lab_number||r.sample_id}</Td>
+            <Td>{tLabel(r.test_type)}</Td>
+            <Td>{r.tested_at}</Td>
+            <td style={{padding:"8px 10px",borderBottom:"1px solid #f5f5f5"}}><Badge s={r.status}/></td>
+            <td style={{padding:"8px 10px",borderBottom:"1px solid #f5f5f5"}}>
+              <button onClick={()=>{setSelSampleId(r.sample_id);setShowForm(true)}} style={{fontSize:12,padding:"4px 10px",borderRadius:4,border:"1px solid #ddd",background:"#fff",cursor:"pointer",color:"#185fa5"}}>Открыть</button>
+            </td>
+          </tr>
+        ))}</tbody>
+      </table>
+      {rows.length===0&&<p style={{color:"#999",textAlign:"center",padding:"2rem",fontSize:13}}>Карточек пока нет</p>}
+    </Card>
+  )
+}
+function PageProtocols() {
+  const [rows,setRows]=useState([])
+  useEffect(()=>{ api.get('/protocols').then(r=>setRows(r.data)) },[])
+  return (
+    <Card title={`Протоколы (${rows.length})`}>
+      <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+        <thead><tr><Th>№ протокола</Th><Th>Дата</Th><Th>Статус</Th></tr></thead>
+        <tbody>{rows.map(r=>(
+          <tr key={r.id}>
+            <Td bold>{r.number}</Td>
+            <Td>{r.created_at?.slice(0,10)}</Td>
+            <td style={{padding:'8px 10px',borderBottom:'1px solid #f5f5f5'}}><Badge s={r.status}/></td>
+          </tr>
+        ))}</tbody>
+      </table>
+      {rows.length===0 && <p style={{color:'#999',textAlign:'center',padding:'2rem',fontSize:13}}>Протоколов пока нет</p>}
+    </Card>
+  )
+}
+
+export default function App() {
+  const [user,setUser] = useState(()=>{ const t=localStorage.getItem('token'); return t?JSON.parse(localStorage.getItem('user')||'null'):null })
+  const login = u => { setUser(u); localStorage.setItem('user',JSON.stringify(u)) }
+  const logout = () => { setUser(null); localStorage.removeItem('token'); localStorage.removeItem('user') }
+  if (!user) return <Login onLogin={login}/>
+  return (
+    <AuthCtx.Provider value={user}>
+      <BrowserRouter><Layout user={user} onLogout={logout}/></BrowserRouter>
+    </AuthCtx.Provider>
+  )
+}
