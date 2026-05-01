@@ -232,6 +232,13 @@ function PageSamples() {
 
   const onSave = () => { setShowForm(false); setEditing(null); load() }
   const onEdit = s => { setEditing(s); setShowForm(true); window.scrollTo(0,0) }
+  
+  const del = async (id) => {
+    if(window.confirm('Вы уверены, что хотите удалить эту пробу?')) {
+      try { await api.delete(`/samples/${id}`); load() }
+      catch(e) { alert('Ошибка при удалении пробы.') }
+    }
+  }
 
   const filtered = rows.filter(r =>
     !filter || r.lab_number?.includes(filter) ||
@@ -270,10 +277,11 @@ function PageSamples() {
                   <Td>{r.sampling_date}</Td>
                   <Td>{r.registration_date}</Td>
                   <td style={{padding:'8px 10px',borderBottom:'1px solid #f5f5f5'}}>
-{(()=>{const st=STAGE_LABELS[r.stage||'new_request']||STAGE_LABELS['new_request'];return <span style={{fontSize:11,padding:'3px 8px',borderRadius:4,background:st.bg,color:st.color,whiteSpace:'nowrap',fontWeight:500}}>{st.label}</span>})()}
-</td>
-                  <td style={{padding:'8px 10px',borderBottom:'1px solid #f5f5f5'}}>
-                    <button onClick={()=>onEdit(r)} style={{fontSize:12,padding:'4px 10px',borderRadius:4,border:'1px solid #ddd',background:'#fff',cursor:'pointer',color:'#185fa5'}}>Изменить</button>
+                    <Badge s={r.stage || 'new_request'} />
+                  </td>
+                  <td style={{padding:'8px 10px',borderBottom:'1px solid #f5f5f5',display:'flex',gap:'6px'}}>
+                    <button onClick={()=>onEdit(r)} style={{fontSize:12,padding:'4px 8px',borderRadius:4,border:'1px solid #ddd',background:'#fff',cursor:'pointer',color:'#185fa5'}}>Изменить</button>
+                    <button onClick={()=>del(r.id)} style={{fontSize:12,padding:'4px 8px',borderRadius:4,border:'1px solid #ffcdd2',background:'#ffebee',cursor:'pointer',color:'#c62828'}}>Удалить</button>
                   </td>
                 </tr>
               ))}
@@ -286,23 +294,20 @@ function PageSamples() {
   )
 }
 
-
-const STAGE_LABELS={
-  new_request:{label:'Новая заявка',color:'#6366f1',bg:'#eef2ff'},
-  negotiation:{label:'Согласование',color:'#f59e0b',bg:'#fffbeb'},
-  contract:{label:'Договор и счёт',color:'#10b981',bg:'#ecfdf5'},
-  waiting_samples:{label:'Ожидание проб',color:'#3b82f6',bg:'#eff6ff'},
-  in_work:{label:'В работе',color:'#8b5cf6',bg:'#f5f3ff'},
-  waiting_payment:{label:'Ожидание оплаты',color:'#ef4444',bg:'#fef2f2'},
-  results:{label:'Выдача результатов',color:'#06b6d4',bg:'#ecfeff'},
-  upd:{label:'Подписание УПД',color:'#22c55e',bg:'#f0fdf4'},
-}
 function PageRequests() {
   const [rows,setRows]=useState([]); const [show,setShow]=useState(false)
   const [clients,setClients]=useState([])
   const [form,setForm]=useState({client_id:'',material_type:'abs_58401',test_types:'',quantity:1,notes:''})
   useEffect(()=>{ api.get('/requests').then(r=>setRows(r.data)); api.get('/clients').then(r=>setClients(r.data)) },[])
   const save = async () => { await api.post('/requests',form); setShow(false); api.get('/requests').then(r=>setRows(r.data)) }
+  
+  const del = async (id) => {
+    if(window.confirm('Вы уверены, что хотите удалить эту заявку?')) {
+      try { await api.delete(`/requests/${id}`); setRows(rows.filter(r=>r.id!==id)) }
+      catch(e) { alert('Ошибка при удалении заявки. Возможно к ней уже привязаны пробы.') }
+    }
+  }
+
   return (
     <Card title={`Заявки (${rows.length})`} action={<Btn onClick={()=>setShow(true)}>+ Новая заявка</Btn>}>
       {show && (
@@ -331,7 +336,7 @@ function PageRequests() {
         </div>
       )}
       <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-        <thead><tr><Th>№</Th><Th>Клиент</Th><Th>Материал</Th><Th>Кол-во</Th><Th>Статус</Th><Th>Дата</Th></tr></thead>
+        <thead><tr><Th>№</Th><Th>Клиент</Th><Th>Материал</Th><Th>Кол-во</Th><Th>Статус</Th><Th>Дата</Th><Th>Действия</Th></tr></thead>
         <tbody>{rows.map(r=>(
           <tr key={r.id}>
             <Td bold>{r.number}</Td>
@@ -340,6 +345,9 @@ function PageRequests() {
             <Td>{r.quantity}</Td>
             <td style={{padding:'8px 10px',borderBottom:'1px solid #f5f5f5'}}><Badge s={r.status}/></td>
             <Td>{r.created_at?.slice(0,10)}</Td>
+            <td style={{padding:'8px 10px',borderBottom:'1px solid #f5f5f5'}}>
+              <button onClick={()=>del(r.id)} style={{fontSize:12,padding:'4px 8px',borderRadius:4,border:'1px solid #ffcdd2',background:'#ffebee',cursor:'pointer',color:'#c62828'}}>Удалить</button>
+            </td>
           </tr>
         ))}</tbody>
       </table>
@@ -353,6 +361,14 @@ function PageClients() {
   const [form,setForm]=useState({name:'',inn:'',kpp:'',contact_name:'',contact_phone:'',contact_email:'',address:''})
   useEffect(()=>{ api.get('/clients').then(r=>setRows(r.data)) },[])
   const save = async () => { await api.post('/clients',form); setShow(false); api.get('/clients').then(r=>setRows(r.data)) }
+  
+  const del = async (id) => {
+    if(window.confirm('Вы уверены, что хотите удалить этого клиента?')) {
+      try { await api.delete(`/clients/${id}`); setRows(rows.filter(r=>r.id!==id)) }
+      catch(e) { alert('Ошибка: невозможно удалить клиента (возможно, к нему уже привязаны заявки).') }
+    }
+  }
+
   const fields = [['name','Название организации *',true],['inn','ИНН'],['kpp','КПП'],['contact_name','Контактное лицо'],['contact_phone','Телефон'],['contact_email','Email'],['address','Юридический адрес']]
   return (
     <Card title={`Клиенты (${rows.length})`} action={<Btn onClick={()=>setShow(true)}>+ Новый клиент</Btn>}>
@@ -369,10 +385,13 @@ function PageClients() {
         </div>
       )}
       <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-        <thead><tr><Th>Организация</Th><Th>ИНН</Th><Th>Контакт</Th><Th>Телефон</Th><Th>Email</Th></tr></thead>
+        <thead><tr><Th>Организация</Th><Th>ИНН</Th><Th>Контакт</Th><Th>Телефон</Th><Th>Email</Th><Th>Действия</Th></tr></thead>
         <tbody>{rows.map(r=>(
           <tr key={r.id}>
             <Td bold>{r.name}</Td><Td>{r.inn}</Td><Td>{r.contact_name}</Td><Td>{r.contact_phone}</Td><Td>{r.contact_email}</Td>
+            <td style={{padding:'8px 10px',borderBottom:'1px solid #f5f5f5'}}>
+              <button onClick={()=>del(r.id)} style={{fontSize:12,padding:'4px 8px',borderRadius:4,border:'1px solid #ffcdd2',background:'#ffebee',cursor:'pointer',color:'#c62828'}}>Удалить</button>
+            </td>
           </tr>
         ))}</tbody>
       </table>
