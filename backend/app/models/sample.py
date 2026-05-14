@@ -18,4 +18,13 @@ class Sample(Base):
     sampling_conditions = Column(Text)
     act_type            = Column(String)   # intake|sampling
     status              = Column(String, default="registered")  # registered|in_progress|done
+    material_norm_id    = Column(Integer, ForeignKey("material_norms.id"), nullable=True)
+    primary_nd_json     = Column(Text)  # JSON: выбранные НД по материалу (столб. 2)
+    additional_nd_json  = Column(Text)  # JSON: доп. НД (столб. 3)
+    methodology_catalog_json = Column(Text)  # JSON: id позиций каталога (методики/показатели)
+    selected_price_position_ids_json = Column(Text)  # JSON: id PricePosition, выбранные в заявке/пробе
+    selected_indicator_ids_json = Column(Text)  # JSON: id TestIndicator из справочника (показатели по материалу)
+    material_category_id = Column(Integer, ForeignKey("material_categories.id"), nullable=True)
+    material_test_object_id = Column(Integer, ForeignKey("material_test_objects.id"), nullable=True)
+    material_variant = Column(String)
     created_at          = Column(DateTime(timezone=True), server_default=func.now())

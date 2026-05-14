@@ -4,3 +4,14 @@ from app.models.request import Request
 from app.models.sample import Sample
 from app.models.test import Test
 from app.models.protocol import Protocol
+from app.models.deal_task import DealTask
+from app.models.company import Company
+from app.models.contact import Contact
+from app.models.product_category import ProductCategory
+from app.models.product import Product
+from app.models.deal import Deal
+from app.models.deal_item import DealItem
+from app.models.quote import Quote
+from app.models.quote_sender_profile import QuoteSenderProfile
+from app.models.quote_terms_template import QuoteTermsTemplate
+from app.models.commercial_quote import CommercialQuote, CommercialQuoteItem

@@ -1,2 +1,130 @@
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f6fa;color:#1a1a2e}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);transition:background .25s,color .25s}
+
+:root {
+  --bg:         #f5f6fa;
+  --bg2:        #eef0f6;
+  --surface:    #ffffff;
+  --surface2:   #f8fafc;
+  --border:     #e2e8f0;
+  --border2:    #f0f0f0;
+  --text:       #1a1a2e;
+  --text2:      #333333;
+  --text3:      #555555;
+  --text4:      #666666;
+  --text5:      #94a3b8;
+  --primary:    #185fa5;
+  --primary-bg: rgba(255,255,255,0.1);
+  --inp-bg:     #ffffff;
+  --inp-border: #dddddd;
+  --aside-bg:   #1a1a2e;
+  --aside-text: rgba(255,255,255,0.6);
+  --aside-active-text: #ffffff;
+  --aside-active-bg: rgba(255,255,255,0.1);
+  --aside-border: rgba(255,255,255,0.1);
+  --aside-head: #7eb3e8;
+  --aside-section: rgba(255,255,255,0.3);
+  --shadow:     0 1px 4px rgba(0,0,0,0.06);
+  --shadow2:    0 1px 3px rgba(0,0,0,0.08);
+}
+
+[data-theme="dark"] {
+  --bg:         #0d1117;
+  --bg2:        #13192b;
+  --surface:    #1a2035;
+  --surface2:   #222840;
+  --border:     #2d3a56;
+  --border2:    #253047;
+  --text:       #e2e8f0;
+  --text2:      #cbd5e1;
+  --text3:      #a0aec0;
+  --text4:      #8899b0;
+  --text5:      #4a5568;
+  --primary:    #7eb3e8;
+  --primary-bg: rgba(126,179,232,0.12);
+  --inp-bg:     #1e2840;
+  --inp-border: #3d4f70;
+  --aside-bg:   #111827;
+  --aside-text: rgba(255,255,255,0.5);
+  --aside-active-text: #ffffff;
+  --aside-active-bg: rgba(126,179,232,0.15);
+  --aside-border: rgba(255,255,255,0.07);
+  --aside-head: #7eb3e8;
+  --aside-section: rgba(255,255,255,0.25);
+  --shadow:     0 1px 4px rgba(0,0,0,0.3);
+  --shadow2:    0 1px 3px rgba(0,0,0,0.25);
+}
+
+/* ---- scrollbar ---- */
+[data-theme="dark"] ::-webkit-scrollbar{width:6px;height:6px}
+[data-theme="dark"] ::-webkit-scrollbar-track{background:#1a2035}
+[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#3d4f70;border-radius:3px}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover{background:#5a6f96}
+
+/* ---- inputs / selects / textareas (handles cases where inline style sets background:#fff) ---- */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: var(--inp-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--inp-border) !important;
+  color-scheme: dark;
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: var(--text5) !important; }
+
+/* ---- tables ---- */
+[data-theme="dark"] tr { border-color: var(--border2) !important; }
+
+/* ---- modal / form panels with hardcoded whites ---- */
+[data-theme="dark"] [style*="background:#f8f9ff"],
+[data-theme="dark"] [style*="background: #f8f9ff"],
+[data-theme="dark"] [style*="background:'#f8f9ff'"] { background: var(--surface2) !important; }
+
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background: white"],
+[data-theme="dark"] [style*="background:white"] { background: var(--surface) !important; }
+
+[data-theme="dark"] [style*="background:#f8fafc"],
+[data-theme="dark"] [style*="background: #f8fafc"] { background: var(--surface2) !important; }
+
+[data-theme="dark"] [style*="background:#f5f5f5"],
+[data-theme="dark"] [style*="background: #f5f5f5"] { background: var(--bg2) !important; }
+
+[data-theme="dark"] [style*="color:#333"],
+[data-theme="dark"] [style*="color: #333"] { color: var(--text2) !important; }
+
+[data-theme="dark"] [style*="color:#1a1a2e"],
+[data-theme="dark"] [style*="color: #1a1a2e"] { color: var(--text) !important; }
+
+[data-theme="dark"] [style*="color:#64748b"],
+[data-theme="dark"] [style*="color: #64748b"] { color: var(--text3) !important; }
+
+[data-theme="dark"] [style*="color:#94a3b8"],
+[data-theme="dark"] [style*="color: #94a3b8"] { color: var(--text4) !important; }
+
+[data-theme="dark"] [style*="color:#555"],
+[data-theme="dark"] [style*="color: #555"] { color: var(--text3) !important; }
+
+[data-theme="dark"] [style*="color:#666"],
+[data-theme="dark"] [style*="color: #666"] { color: var(--text4) !important; }
+
+[data-theme="dark"] [style*="color:#999"],
+[data-theme="dark"] [style*="color: #999"] { color: var(--text5) !important; }
+
+[data-theme="dark"] [style*="borderBottom:2px solid #f0f0f0"],
+[data-theme="dark"] [style*="borderBottom: 2px solid #f0f0f0"],
+[data-theme="dark"] [style*="border-bottom:2px solid #f0f0f0"] { border-bottom-color: var(--border) !important; }
+
+[data-theme="dark"] [style*="borderBottom:1px solid #f5f5f5"],
+[data-theme="dark"] [style*="border-bottom:1px solid #f5f5f5"] { border-bottom-color: var(--border2) !important; }
+
+/* ---- filter panel backgrounds ---- */
+[data-theme="dark"] [style*="background:#f8fafc"][style*="border:1px solid #e2e8f0"] {
+  background: var(--surface2) !important;
+  border-color: var(--border) !important;
+}
+
+/* ---- page transition ---- */
+main > * { transition: background .25s, color .25s, border-color .25s; }

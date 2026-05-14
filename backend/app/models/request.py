@@ -17,3 +17,8 @@ class Request(Base):
     notes         = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     stage       = Column(String, default="new_request")
+    material_category_id = Column(Integer, ForeignKey("material_categories.id"))
+    material_test_object_id = Column(Integer, ForeignKey("material_test_objects.id"))
+    material_variant = Column(String)
+    selected_price_position_ids_json = Column(Text)
+    selected_indicator_ids_json = Column(Text)

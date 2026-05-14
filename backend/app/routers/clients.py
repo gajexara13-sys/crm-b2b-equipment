@@ -14,15 +14,16 @@ class ClientIn(BaseModel):
     kpp: Optional[str] = None
     address: Optional[str] = None
     contact_name: Optional[str] = None
+    contact_position: Optional[str] = None
     contact_phone: Optional[str] = None
     contact_email: Optional[str] = None
     notes: Optional[str] = None
 
-@router.get("/")
+@router.get("")
 def list_clients(db: Session = Depends(get_db), _=Depends(get_current_user)):
     return db.query(Client).order_by(Client.name).all()
 
-@router.post("/")
+@router.post("")
 def create_client(data: ClientIn, db: Session = Depends(get_db), _=Depends(get_current_user)):
     c = Client(**data.dict())
     db.add(c); db.commit(); db.refresh(c)
@@ -41,3 +42,10 @@ def update_client(id: int, data: ClientIn, db: Session = Depends(get_db), _=Depe
     for k, v in data.dict().items(): setattr(c, k, v)
     db.commit(); db.refresh(c)
     return c
+
+@router.delete("/{id}")
+def delete_client(id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    c = db.query(Client).filter(Client.id == id).first()
+    if not c: raise HTTPException(404, "Клиент не найден")
+    db.delete(c); db.commit()
+    return {"ok": True}

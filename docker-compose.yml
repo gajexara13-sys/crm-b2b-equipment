@@ -18,6 +18,8 @@ services:
     environment:
       DATABASE_URL: postgresql://labuser:LabCRM2025secure@db:5432/labcrm
       SECRET_KEY: rutest-secret-key-2025
+      # Для шаблонов протоколов в Docker: PROTOCOL_TEMPLATES_DIR=/protocol_templates
+      # и volume: C:/Users/user/Documents/Протоколы LIMS:/protocol_templates:ro
     ports:
       - "8000:8000"
     depends_on:

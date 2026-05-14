@@ -2,6 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
+import bcrypt as _bcrypt_lib
+if not hasattr(_bcrypt_lib, '__about__'):
+    class _BcryptAbout:
+        __version__ = _bcrypt_lib.__version__
+    _bcrypt_lib.__about__ = _BcryptAbout()
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from app.database import get_db

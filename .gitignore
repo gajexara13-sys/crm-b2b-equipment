@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node
+node_modules/
+frontend/dist/
+frontend/package-lock.json
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Databases
+*.db
+*.db.backup_*
+data/
+backend/data/
+
+# Logs
+*.log
+backend_log.txt
+backend_run.log
+
+# Uploads (пользовательские файлы)
+backend/uploads/
+
+# Claude Code (воркдеревья, сессии)
+.claude/
+
+# Временные / тестовые артефакты
+fix_routes.py
+test_export.docx
+test_kp5.docx
+test_kp5.pdf
+
+# Бэкапы
+*.bak
+
+# Windows
+desktop.ini
+Thumbs.db
