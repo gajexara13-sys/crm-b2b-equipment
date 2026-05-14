@@ -16,32 +16,6 @@ from pathlib import Path
 
 import pandas as pd
 
-SKIP_PATTERNS = re.compile(
-    r"^(характеристики\s+товара|технические\s+характеристики|главная\s+особенность|описание\s+товара)$",
-    re.IGNORECASE,
-)
-
-
-def text_to_spec_json(text: str) -> str:
-    """Парсит текстовые характеристики в JSON [{key, value}]."""
-    if not text:
-        return "[]"
-    rows = []
-    for raw in text.split("\n"):
-        line = raw.strip()
-        if not line or SKIP_PATTERNS.match(line):
-            continue
-        line = re.sub(r"^\d+\.\s*", "", line)
-        line = re.sub(r"^[•·\-–]\s*", "", line).strip()
-        if not line:
-            continue
-        idx = line.find(":")
-        if idx > 0:
-            rows.append({"key": line[:idx].strip(), "value": line[idx + 1:].strip()})
-        else:
-            rows.append({"key": "", "value": line})
-    return json.dumps(rows, ensure_ascii=False)
-
 # ── пути ─────────────────────────────────────────────────────────────────────
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DB_CANDIDATES = [
@@ -173,8 +147,7 @@ def import_products(conn: sqlite3.Connection, df: pd.DataFrame, cat_map: dict[st
         price = parse_price(row.get("price"))
 
         description = str(row.get("description", "")).strip() if pd.notna(row.get("description")) else ""
-        raw_specs = str(row.get("specifications", "")).strip() if pd.notna(row.get("specifications")) else ""
-        tech_specs = text_to_spec_json(raw_specs) if raw_specs else "[]"
+        tech_specs = str(row.get("specifications", "")).strip() if pd.notna(row.get("specifications")) else ""
 
         image_url = str(row.get("image_url", "")).strip() if pd.notna(row.get("image_url")) else ""
         photo_urls_json = json.dumps([image_url], ensure_ascii=False) if image_url else "[]"
