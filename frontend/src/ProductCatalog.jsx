@@ -22,6 +22,94 @@ function parseJsonList(raw) {
   }
 }
 
+function parseTechSpecsToRows(raw) {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) return parsed.map(r => ({ key: r.key ?? '', value: r.value ?? '' }))
+  } catch {}
+  // Fallback: парсим текстовый формат
+  return raw.split('\n')
+    .map(l => l.trim())
+    .filter(l => l && !/^(характеристики\s+товара|технические\s+характеристики)/i.test(l))
+    .map(l => {
+      const clean = l.replace(/^\d+\.\s*/, '').replace(/^[•·\-–]\s*/, '').trim()
+      const idx = clean.indexOf(':')
+      if (idx > 0) return { key: clean.slice(0, idx).trim(), value: clean.slice(idx + 1).trim() }
+      return { key: '', value: clean }
+    })
+    .filter(r => r.key || r.value)
+}
+
+function serializeTechSpecs(rows) {
+  const clean = rows.filter(r => r.key || r.value)
+  return clean.length ? JSON.stringify(clean, null, 0) : ''
+}
+
+function TechSpecsEditor({ rows, onChange }) {
+  const addRow = () => onChange([...rows, { key: '', value: '' }])
+  const removeRow = i => onChange(rows.filter((_, idx) => idx !== i))
+  const updateRow = (i, field, val) => {
+    const next = rows.map((r, idx) => idx === i ? { ...r, [field]: val } : r)
+    onChange(next)
+  }
+
+  const cellInp = {
+    width: '100%', padding: '6px 8px', border: '1px solid var(--inp-border)',
+    borderRadius: 4, background: 'var(--inp-bg)', color: 'var(--text)',
+    fontSize: 13, boxSizing: 'border-box',
+  }
+
+  return (
+    <div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 8 }}>
+        <thead>
+          <tr>
+            <th style={{ textAlign: 'left', padding: '5px 6px', color: 'var(--text3)', fontWeight: 500, fontSize: 11, borderBottom: '1px solid var(--border)', width: '42%' }}>Параметр</th>
+            <th style={{ textAlign: 'left', padding: '5px 6px', color: 'var(--text3)', fontWeight: 500, fontSize: 11, borderBottom: '1px solid var(--border)' }}>Значение</th>
+            <th style={{ width: 28, borderBottom: '1px solid var(--border)' }} />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i}>
+              <td style={{ padding: '3px 4px 3px 0', verticalAlign: 'middle' }}>
+                <input
+                  value={row.key}
+                  onChange={e => updateRow(i, 'key', e.target.value)}
+                  placeholder="Параметр"
+                  style={cellInp}
+                />
+              </td>
+              <td style={{ padding: '3px 4px', verticalAlign: 'middle' }}>
+                <input
+                  value={row.value}
+                  onChange={e => updateRow(i, 'value', e.target.value)}
+                  placeholder="Значение"
+                  style={cellInp}
+                />
+              </td>
+              <td style={{ padding: '3px 0 3px 4px', verticalAlign: 'middle', textAlign: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => removeRow(i)}
+                  title="Удалить строку"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}
+                >×</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button
+        type="button"
+        onClick={addRow}
+        style={{ fontSize: 12, padding: '5px 12px', borderRadius: 5, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text3)', cursor: 'pointer' }}
+      >+ Добавить строку</button>
+    </div>
+  )
+}
+
 function parseIdsFromText(s) {
   if (!s || !String(s).trim()) return []
   return String(s)
@@ -101,7 +189,7 @@ const emptyForm = () => ({
   name: '',
   unit: 'шт',
   description: '',
-  tech_specs: '',
+  tech_spec_rows: [],
   warranty_terms: '',
   delivery_terms: '',
   cost_with_vat: 0,
@@ -181,7 +269,7 @@ export default function ProductCatalog() {
       name: p.name || '',
       unit: p.unit || 'шт',
       description: p.description || '',
-      tech_specs: p.tech_specs || '',
+      tech_spec_rows: parseTechSpecsToRows(p.tech_specs),
       warranty_terms: p.warranty_terms || '',
       delivery_terms: p.delivery_terms || '',
       cost_with_vat: p.cost_with_vat ?? 0,
@@ -267,7 +355,7 @@ export default function ProductCatalog() {
         name: form.name.trim(),
         unit: form.unit || 'шт',
         description: form.description.trim() || null,
-        tech_specs: form.tech_specs.trim() || null,
+        tech_specs: serializeTechSpecs(form.tech_spec_rows) || null,
         warranty_terms: form.warranty_terms.trim() || null,
         delivery_terms: form.delivery_terms.trim() || null,
         cost_with_vat,
@@ -442,7 +530,10 @@ export default function ProductCatalog() {
               <label style={lbl}>Описание</label>
               <textarea style={{ ...inp, minHeight: 72, resize: 'vertical' }} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
               <label style={lbl}>Технические характеристики</label>
-              <textarea style={{ ...inp, minHeight: 96, resize: 'vertical', fontFamily: 'inherit' }} value={form.tech_specs} onChange={e => setForm(f => ({ ...f, tech_specs: e.target.value }))} />
+              <TechSpecsEditor
+                rows={form.tech_spec_rows}
+                onChange={rows => setForm(f => ({ ...f, tech_spec_rows: rows }))}
+              />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <label style={lbl}>Артикул</label>
