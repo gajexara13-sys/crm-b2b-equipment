@@ -341,6 +341,16 @@ def _fetch_image(url: str, tpl: DocxTemplate, width_cm: float) -> "InlineImage |
 
         if not raw:
             return ""
+        # Ensure image is in a format python-docx understands (no WebP/AVIF/etc.)
+        # Re-encode via Pillow → PNG to guarantee compatibility.
+        try:
+            from PIL import Image as _PILImage
+            buf_out = io.BytesIO()
+            _PILImage.open(io.BytesIO(raw)).convert("RGB").save(buf_out, format="JPEG")
+            raw = buf_out.getvalue()
+        except Exception as _conv_exc:
+            _log.warning("Конвертация изображения не удалась (%s): %s", url, _conv_exc)
+            return ""
         return InlineImage(tpl, io.BytesIO(raw), width=Cm(width_cm))
     except Exception as exc:
         _log.warning("Изображение не загружено (%s): %s", url, exc)
@@ -697,9 +707,12 @@ def _write_builtin_docxtpl_template(path: Path) -> None:
 
 def resolve_docxtpl_template_path() -> Path:
     env = os.environ.get("QUOTE_DOCX_TEMPLATE_PATH", "").strip()
-    if env:
-        return Path(env).expanduser().resolve()
     root = Path(__file__).resolve().parent.parent
+    if env:
+        p = Path(env).expanduser()
+        if not p.is_absolute():
+            p = root / p
+        return p.resolve()
     default = root / "templates" / "kp_docxtpl.docx"
     if not default.exists():
         _write_builtin_docxtpl_template(default)

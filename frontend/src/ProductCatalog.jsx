@@ -22,6 +22,39 @@ function parseJsonList(raw) {
   }
 }
 
+function parseTechSpecsToRows(raw) {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) return parsed.map(r => ({ key: r.key ?? '', value: r.value ?? '' }))
+  } catch (_) {}
+  return raw.split('\n').filter(l => l.trim()).map(line => {
+    const idx = line.indexOf(':')
+    return idx > 0 ? { key: line.slice(0, idx).trim(), value: line.slice(idx + 1).trim() } : { key: '', value: line.trim() }
+  })
+}
+
+function serializeTechSpecs(rows) {
+  const clean = rows.filter(r => r.key.trim() || r.value.trim())
+  return clean.length ? JSON.stringify(clean) : ''
+}
+
+function TechSpecsEditor({ rows, onChange }) {
+  const update = (i, field, val) => onChange(rows.map((r, idx) => idx === i ? { ...r, [field]: val } : r))
+  return (
+    <div>
+      {rows.map((r, i) => (
+        <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+          <input placeholder="Параметр" style={{ flex: 1, padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 13 }} value={r.key} onChange={e => update(i, 'key', e.target.value)} />
+          <input placeholder="Значение" style={{ flex: 1, padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 13 }} value={r.value} onChange={e => update(i, 'value', e.target.value)} />
+          <button type="button" onClick={() => onChange(rows.filter((_, idx) => idx !== i))} style={{ padding: '2px 8px', border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 16 }}>×</button>
+        </div>
+      ))}
+      <button type="button" onClick={() => onChange([...rows, { key: '', value: '' }])} style={{ marginTop: 2, fontSize: 12, padding: '3px 10px', border: '1px solid #94a3b8', borderRadius: 4, background: '#f8fafc', cursor: 'pointer' }}>+ Добавить строку</button>
+    </div>
+  )
+}
+
 function parseIdsFromText(s) {
   if (!s || !String(s).trim()) return []
   return String(s)
@@ -101,7 +134,7 @@ const emptyForm = () => ({
   name: '',
   unit: 'шт',
   description: '',
-  tech_specs: '',
+  tech_spec_rows: [],
   warranty_terms: '',
   delivery_terms: '',
   cost_with_vat: 0,
@@ -181,7 +214,7 @@ export default function ProductCatalog() {
       name: p.name || '',
       unit: p.unit || 'шт',
       description: p.description || '',
-      tech_specs: p.tech_specs || '',
+      tech_spec_rows: parseTechSpecsToRows(p.tech_specs),
       warranty_terms: p.warranty_terms || '',
       delivery_terms: p.delivery_terms || '',
       cost_with_vat: p.cost_with_vat ?? 0,
@@ -267,7 +300,7 @@ export default function ProductCatalog() {
         name: form.name.trim(),
         unit: form.unit || 'шт',
         description: form.description.trim() || null,
-        tech_specs: form.tech_specs.trim() || null,
+        tech_specs: serializeTechSpecs(form.tech_spec_rows) || null,
         warranty_terms: form.warranty_terms.trim() || null,
         delivery_terms: form.delivery_terms.trim() || null,
         cost_with_vat,
@@ -442,7 +475,7 @@ export default function ProductCatalog() {
               <label style={lbl}>Описание</label>
               <textarea style={{ ...inp, minHeight: 72, resize: 'vertical' }} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
               <label style={lbl}>Технические характеристики</label>
-              <textarea style={{ ...inp, minHeight: 96, resize: 'vertical', fontFamily: 'inherit' }} value={form.tech_specs} onChange={e => setForm(f => ({ ...f, tech_specs: e.target.value }))} />
+              <TechSpecsEditor rows={form.tech_spec_rows} onChange={rows => setForm(f => ({ ...f, tech_spec_rows: rows }))} />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <label style={lbl}>Артикул</label>

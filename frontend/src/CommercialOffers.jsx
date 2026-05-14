@@ -465,7 +465,7 @@ export default function CommercialOffers() {
           product_id: p.id,
           model: p.sku || '',
           intro: p.description || '',
-          features_text: p.tech_specs || '',
+          features_text: (() => { try { const r = JSON.parse(p.tech_specs || ''); if (Array.isArray(r)) return r.map(x => x.key ? `${x.key}: ${x.value}` : x.value).join('\n') } catch (_) {} return p.tech_specs || '' })(),
           photo_urls,
           price_without_vat: Number(p.recommended_price || 0),
           price_with_vat: Number(p.price_end_vat || p.recommended_price || 0),
