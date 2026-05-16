@@ -136,7 +136,7 @@ export default function SenderProfiles() {
         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>Профили отправителей</h2>
         <button type="button" onClick={openNew} style={{ padding: '10px 18px', border: 'none', borderRadius: 6, background: 'var(--primary)', color: '#fff', fontWeight: 500, cursor: 'pointer' }}>Добавить профиль</button>
       </div>
-      {err && <div style={{ background: '#fff1f2', color: '#991b1b', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{err}</div>}
+      {err && <div style={{ background:'rgba(239,68,68,0.12)', color: '#991b1b', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{err}</div>}
       {loading ? <p style={{ color: 'var(--text3)' }}>Загрузка…</p> : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead><tr>

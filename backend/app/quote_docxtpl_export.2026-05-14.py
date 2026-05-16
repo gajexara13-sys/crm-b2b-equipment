@@ -379,14 +379,6 @@ def build_docxtpl_context(ctx: dict[str, Any]) -> dict[str, Any]:
     items_raw = ctx.get("items") or []
     show_disc = q.get("show_discount_column", True)
 
-    # Регулярки для авто-разбивки intro на пули и текст описания
-    _BULLET_RE = _re.compile(r'^[•\-–—*]|^\d+[).]\s')
-    _LABEL_RE  = _re.compile(
-        r'^(Главн[аые]+\s+особенност[ьи]|Описание\s+товара|'
-        r'Применение|Назначение|Комплект\s+поставки|'
-        r'Основные\s+характеристики|Преимущества)\s*$', _re.I
-    )
-
     items_out: list[dict[str, Any]] = []
     for idx, it in enumerate(items_raw, start=1):
         row = _normalize_item_export(it)
@@ -420,40 +412,12 @@ def build_docxtpl_context(ctx: dict[str, Any]) -> dict[str, Any]:
 
         intro_plain = (row.get("intro") or "").strip()
         kit_plain = (row.get("kit_text") or "").strip()
-
-        # Если features_text пустой, но в intro хранятся пули вперемешку
-        # с текстом описания — автоматически разделяем их.
-        # Строки, начинающиеся с «•», «–», «-» или цифры+точки → особенности.
-        # Всё остальное (кроме коротких заголовков-меток) → описание.
-        if not features_lines and intro_plain:
-            _desc_parts: list[str] = []
-            _feat_parts: list[str] = []
-            for _ln in intro_plain.splitlines():
-                _s = _ln.strip()
-                if not _s or _LABEL_RE.match(_s):
-                    continue                       # всегда удаляем заголовки-метки
-                if _BULLET_RE.match(_s):
-                    _feat_parts.append(_s)         # пуля → особенности
-                else:
-                    _desc_parts.append(_s)         # текст → описание
-            if _feat_parts:
-                features_lines = _feat_parts
-                features_block = Listing("\n".join(features_lines))
-            intro_plain = "\n".join(_desc_parts).strip()  # всегда обновляем
-
-        _show_features = bool(row.get("show_features", True))
-        _show_intro    = bool(row.get("show_intro",    True))
-        # Если флаг отключён — пустим пустые списки, чтобы {%p for %} не рендерил строки
-        if not _show_features:
-            features_lines = []
-            features_block = ""
-
         items_out.append(
             {
                 "title": title,
                 "model": model,
-                "show_intro": _show_intro,
-                "show_features": _show_features,
+                "show_intro": row.get("show_intro", True),
+                "show_features": row.get("show_features", True),
                 "show_kit": row.get("show_kit", True),
                 "show_specs": row.get("show_specs", True),
                 "show_photos": row.get("show_photos", True),
@@ -791,190 +755,6 @@ def build_quote_docxtpl(ctx: dict[str, Any]) -> bytes:
         item_ctx["photo"] = photo
 
     tpl.render(context)
-
-    # Сохраняем рендер в байты
     buf = io.BytesIO()
     tpl.save(buf)
-
-    # ── Постобработка документа ──────────────────────────────────────────────
-    try:
-        import random as _random
-        from docx import Document as _Document
-        from lxml import etree as _et
-        from copy import deepcopy as _deepcopy
-        _W   = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-        _W14 = "http://schemas.microsoft.com/office/word/2010/wordml"
-        _P   = f"{{{_W}}}p"
-        _R   = f"{{{_W}}}r"
-        _RPR = f"{{{_W}}}rPr"
-        _BR  = f"{{{_W}}}br"
-        _PPR = f"{{{_W}}}pPr"
-        _JC  = f"{{{_W}}}jc"
-        _IND = f"{{{_W}}}ind"
-        _T   = f"{{{_W}}}t"
-        _VAL = f"{{{_W}}}val"
-        _FL  = f"{{{_W}}}firstLine"
-        _TC  = f"{{{_W}}}tc"
-        _XML_SP = "{http://www.w3.org/XML/1998/namespace}space"
-        _PARA_ID  = f"{{{_W14}}}paraId"
-        _TEXT_ID  = f"{{{_W14}}}textId"
-
-        def _in_table_cell(el):
-            p = el.getparent()
-            while p is not None:
-                if p.tag == _TC:
-                    return True
-                p = p.getparent()
-            return False
-
-        buf.seek(0)
-        _rdoc = _Document(buf)
-
-        # ── Проход 0: устраняем дублирующиеся ID ────────────────────────────
-        # docxtpl клонирует параграфы/объекты шаблона при итерации, не обновляя
-        # уникальные атрибуты. Word требует уникальности и показывает диалог
-        # «восстановить содержимое» при дублях.
-
-        # 0a) w14:paraId / w14:textId на параграфах
-        _seen_para_ids: set = set()
-        _seen_text_ids: set = set()
-        for _para in _rdoc.element.iter(_P):
-            _pid = _para.get(_PARA_ID)
-            if _pid is not None:
-                if _pid in _seen_para_ids:
-                    _para.set(_PARA_ID, f"{_random.randint(1, 0x7FFFFFFE):08X}")
-                else:
-                    _seen_para_ids.add(_pid)
-            _tid = _para.get(_TEXT_ID)
-            if _tid is not None:
-                if _tid in _seen_text_ids:
-                    _para.set(_TEXT_ID, f"{_random.randint(1, 0x7FFFFFFE):08X}")
-                else:
-                    _seen_text_ids.add(_tid)
-
-        # 0b) id на <wp:cNvPr> и <pic:cNvPr> (InlineImage / Drawing objects)
-        # Все картинки должны иметь уникальный числовой id >= 1.
-        _WP  = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-        _PIC = "http://schemas.openxmlformats.org/drawingml/2006/picture"
-        _A   = "http://schemas.openxmlformats.org/drawingml/2006/main"
-        _seen_drawing_ids: set = set()
-        _next_drawing_id = [1]
-
-        def _new_drawing_id():
-            while _next_drawing_id[0] in _seen_drawing_ids:
-                _next_drawing_id[0] += 1
-            new_id = _next_drawing_id[0]
-            _seen_drawing_ids.add(new_id)
-            _next_drawing_id[0] += 1
-            return str(new_id)
-
-        for _cnv in _rdoc.element.iter(
-            f"{{{_WP}}}cNvPr",
-            f"{{{_PIC}}}cNvPr",
-        ):
-            _did = _cnv.get("id")
-            if _did is None:
-                continue
-            try:
-                _did_int = int(_did)
-            except ValueError:
-                continue
-            if _did_int < 1 or _did_int in _seen_drawing_ids:
-                _cnv.set("id", _new_drawing_id())
-            else:
-                _seen_drawing_ids.add(_did_int)
-
-        # ── Проход 0c: пустые ячейки таблицы — добавляем пустой w:p ────────
-        # OOXML требует, чтобы каждый <w:tc> содержал хотя бы один <w:p>.
-        # Если {%p for %} вернул 0 строк (пустой список), ячейка остаётся
-        # без параграфов — Word выдаёт «содержимое, которое не удалось прочитать».
-        for _tc in _rdoc.element.iter(_TC):
-            if not any(c.tag == _P for c in _tc):
-                _empty_p = _et.SubElement(_tc, _P)
-
-        # ── Проход 1: исправляем justify у br-абзацев ───────────────────────
-        for _para in _rdoc.element.iter(_P):
-            _pPr = _para.find(_PPR)
-            if any(el.tag == _BR for el in _para.iter()):
-                if _pPr is not None:
-                    _jc = _pPr.find(_JC)
-                    if _jc is not None and _jc.get(_VAL) in ("both", "distribute"):
-                        _jc.set(_VAL, "left")
-
-        # ── Проход 2: разбиваем Listing br-абзацы вне таблиц на отдельные w:p ──
-        # Каждый «логический» кусок текста (между <w:br/>) становится
-        # отдельным абзацем, копируя w:pPr (incl. firstLine) из оригинала.
-        # Это позволяет w:firstLine работать для КАЖДОГО пункта списка.
-        for _para in list(_rdoc.element.iter(_P)):
-            if _in_table_cell(_para):
-                continue
-            _pPr = _para.find(_PPR)
-            # Собираем потомков первого уровня (не рекурсивно) для проверки
-            if not any(el.tag == _BR for el in _para.iter()):
-                continue
-
-            _parent = _para.getparent()
-            if _parent is None:
-                continue
-            _idx = list(_parent).index(_para)
-
-            # Разбираем содержимое: обходим дочерние элементы <w:p>
-            # и строим список «строк» (segments), разделённых <w:br/>.
-            # Структура docxtpl Listing: один <w:r> с чередованием <w:t>/<w:br/>.
-            _segments: list[tuple] = []  # list of (rpr_el, text_str)
-            _cur_rpr = None
-            _cur_parts: list[str] = []
-
-            def _flush():
-                txt = "".join(_cur_parts)
-                if txt.strip():
-                    _segments.append((_cur_rpr, txt))
-                _cur_parts.clear()
-
-            for _child in list(_para):
-                if _child.tag == _PPR:
-                    continue
-                if _child.tag == _R:
-                    for _gc in list(_child):
-                        if _gc.tag == _RPR:
-                            _cur_rpr = _gc
-                        elif _gc.tag == _T:
-                            _cur_parts.append(_gc.text or "")
-                        elif _gc.tag == _BR:
-                            _flush()
-                elif _child.tag == _T:
-                    _cur_parts.append(_child.text or "")
-                elif _child.tag == _BR:
-                    _flush()
-            _flush()  # последний кусок
-
-            if len(_segments) <= 1:
-                continue  # нечего разбивать
-
-            # Создаём новые <w:p> — по одному на каждый непустой сегмент
-            _new_paras = []
-            for _rpr, _txt in _segments:
-                _np = _et.Element(_P)
-                if _pPr is not None:
-                    _np.append(_deepcopy(_pPr))
-                _nr = _et.SubElement(_np, _R)
-                if _rpr is not None:
-                    _nr.append(_deepcopy(_rpr))
-                _nt = _et.SubElement(_nr, _T)
-                if _txt != _txt.strip():
-                    _nt.set(_XML_SP, "preserve")
-                _nt.text = _txt.strip()
-                _new_paras.append(_np)
-
-            # Вставляем новые абзацы и удаляем оригинал
-            for _i, _np in enumerate(_new_paras):
-                _parent.insert(_idx + _i, _np)
-            _parent.remove(_para)
-
-        buf2 = io.BytesIO()
-        _rdoc.save(buf2)
-        return buf2.getvalue()
-    except Exception as _pp_exc:
-        _log.warning("Постобработка не удалась: %s", _pp_exc)
-        buf.seek(0)
-        return buf.read()
+    return buf.getvalue()

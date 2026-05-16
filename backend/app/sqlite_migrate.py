@@ -39,6 +39,8 @@ def run_sqlite_migrations() -> None:
             ("material_variant", "ALTER TABLE requests ADD COLUMN material_variant TEXT"),
             ("selected_price_position_ids_json", "ALTER TABLE requests ADD COLUMN selected_price_position_ids_json TEXT"),
             ("selected_indicator_ids_json", "ALTER TABLE requests ADD COLUMN selected_indicator_ids_json TEXT"),
+            ("contact_name", "ALTER TABLE requests ADD COLUMN contact_name TEXT"),
+            ("source", "ALTER TABLE requests ADD COLUMN source TEXT"),
         ],
     )
 
@@ -73,6 +75,7 @@ def run_sqlite_migrations() -> None:
         [
             ("terms_price_validity", "ALTER TABLE commercial_quotes ADD COLUMN terms_price_validity TEXT"),
             ("terms_lead_time", "ALTER TABLE commercial_quotes ADD COLUMN terms_lead_time TEXT"),
+            ("request_id", "ALTER TABLE commercial_quotes ADD COLUMN request_id INTEGER REFERENCES requests(id)"),
         ],
     )
 

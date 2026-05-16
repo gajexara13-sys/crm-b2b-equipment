@@ -10,16 +10,16 @@ const SIEVES=[...FR,'поддон'] // 14 элементов
 const N=SIEVES.length
 
 const S={
-  inp:{padding:'5px 6px',border:'1px solid #ddd',borderRadius:4,fontSize:12,width:'100%',boxSizing:'border-box',textAlign:'center'},
+  inp:{padding:'5px 6px',border:'1px solid var(--inp-border)',borderRadius:4,fontSize:12,width:'100%',boxSizing:'border-box',textAlign:'center'},
   inpE:{padding:'5px 6px',border:'2px solid #e53e3e',borderRadius:4,fontSize:12,width:'100%',boxSizing:'border-box',textAlign:'center',background:'#fff5f5'},
   th:{padding:'6px 6px',background:'#1a3a5c',color:'#fff',fontSize:11,fontWeight:600,textAlign:'center',whiteSpace:'nowrap'},
   thB:{padding:'6px 6px',background:'#2e6da4',color:'#fff',fontSize:11,fontWeight:600,textAlign:'center',whiteSpace:'nowrap'},
   thG:{padding:'6px 6px',background:'#1a4a8a',color:'#fff',fontSize:11,fontWeight:600,textAlign:'center',whiteSpace:'nowrap'},
   td:{padding:'4px 5px',fontSize:12,borderBottom:'1px solid #eee',textAlign:'center'},
-  tdR:{padding:'4px 5px',fontSize:12,borderBottom:'1px solid #eee',textAlign:'center',fontWeight:700,color:'#185fa5'},
-  tdG:{padding:'4px 5px',fontSize:12,borderBottom:'1px solid #eee',textAlign:'center',fontWeight:400,color:'#1a1a2e'},
-  sec:{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:'1rem',border:'1px solid #e8ecf5'},
-  secH:{fontSize:11,fontWeight:700,color:'#185fa5',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'},
+  tdR:{padding:'4px 5px',fontSize:12,borderBottom:'1px solid #eee',textAlign:'center',fontWeight:700,color:'var(--primary)'},
+  tdG:{padding:'4px 5px',fontSize:12,borderBottom:'1px solid #eee',textAlign:'center',fontWeight:400,color:'var(--text)'},
+  sec:{background:'var(--surface)',borderRadius:8,padding:'1rem',marginBottom:'1rem',border:'1px solid var(--border)'},
+  secH:{fontSize:11,fontWeight:700,color:'var(--primary)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'},
   lbl:{display:'block',fontSize:11,color:'#666',marginBottom:3,fontWeight:500}
 }
 const fv=v=>{const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n}
@@ -298,7 +298,7 @@ export default function TestABS({sampleId,testId,takenSampleIds=[],onClose}){
     finally{setSaving(false)}
   }
 
-  if(loading) return <div style={{padding:'2rem',textAlign:'center',color:'#64748b'}}>Загрузка данных испытания...</div>
+  if(loading) return <div style={{padding:'2rem',textAlign:'center',color:'var(--text3)'}}>Загрузка данных испытания...</div>
 
   const lossWarn=(loss,label)=>{
     if(loss===null) return null
@@ -313,7 +313,7 @@ export default function TestABS({sampleId,testId,takenSampleIds=[],onClose}){
   const freeSamples=allSamples.filter(s=>!takenSampleIds.includes(s.id))
 
   return(
-    <div style={{fontFamily:'-apple-system,sans-serif',color:'#1a1a2e'}}>
+    <div style={{fontFamily:'-apple-system,sans-serif',color:'var(--text)'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,paddingBottom:12,borderBottom:'2px solid #e8ecf5'}}>
         <div>
           <h2 style={{margin:0,fontSize:16,fontWeight:700}}>
@@ -323,14 +323,14 @@ export default function TestABS({sampleId,testId,takenSampleIds=[],onClose}){
         </div>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           <button type="button" onClick={()=>void handleClose()}
-            style={{padding:'6px 14px',background:'transparent',color:'#64748b',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:5}}>
+            style={{padding:'6px 14px',background:'transparent',color:'var(--text3)',border:'1px solid var(--border)',borderRadius:6,fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:5}}>
             ← Назад
           </button>
-          <select value={gost} onChange={e=>{markDirty();setGost(e.target.value)}} style={{padding:'6px 10px',borderRadius:6,border:'1px solid #ddd',fontSize:13}}>
+          <select value={gost} onChange={e=>{markDirty();setGost(e.target.value)}} style={{padding:'6px 10px',borderRadius:6,border:'1px solid var(--inp-border)',fontSize:13}}>
             <option value="58401">ГОСТ 58401</option>
             <option value="58406">ГОСТ 58406</option>
           </select>
-          <select value={pc} onChange={e=>{markDirty();setPc(+e.target.value)}} style={{padding:'6px 10px',borderRadius:6,border:'1px solid #ddd',fontSize:13}}>
+          <select value={pc} onChange={e=>{markDirty();setPc(+e.target.value)}} style={{padding:'6px 10px',borderRadius:6,border:'1px solid var(--inp-border)',fontSize:13}}>
             <option value={2}>2 паралл.</option>
             <option value={1}>1 опред.</option>
           </select>
@@ -339,10 +339,10 @@ export default function TestABS({sampleId,testId,takenSampleIds=[],onClose}){
 
       {/* Выбор пробы (только при создании новой карточки) */}
       {!isEdit&&(
-        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,padding:'14px 16px',marginBottom:18}}>
-          <label style={{display:'block',fontSize:12,fontWeight:600,color:'#374151',marginBottom:6}}>Проба *</label>
+        <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,padding:'14px 16px',marginBottom:18}}>
+          <label style={{display:'block',fontSize:12,fontWeight:600,color:'var(--text2)',marginBottom:6}}>Проба *</label>
           {freeSamples.length===0
-            ? <div style={{fontSize:13,color:'#94a3b8',padding:'6px 0'}}>Нет свободных проб (все уже имеют карточку испытания)</div>
+            ? <div style={{fontSize:13,color:'var(--text4)',padding:'6px 0'}}>Нет свободных проб (все уже имеют карточку испытания)</div>
             : <select
                 value={pickedSampleId||''}
                 onChange={e=>{markDirty();setPickedSampleId(+e.target.value||null)}}
@@ -439,19 +439,19 @@ export default function TestABS({sampleId,testId,takenSampleIds=[],onClose}){
                 </td>
               </tr>
               <tr>
-                <td style={{...S.td,textAlign:'left',paddingLeft:8,color:'#374151',background:'#f9fafb',position:'sticky',left:0,whiteSpace:'nowrap'}}>Частный остаток, %</td>
+                <td style={{...S.td,textAlign:'left',paddingLeft:8,color:'var(--text2)',background:'#f9fafb',position:'sticky',left:0,whiteSpace:'nowrap'}}>Частный остаток, %</td>
                 {rows1.map((r,i)=><td key={i} style={{...S.tdR,fontWeight:400}}>{fmt(r.part)}</td>)}
                 <td style={S.td}/>
               </tr>
               <tr style={{background:'#fafafa'}}>
-                <td style={{...S.td,textAlign:'left',paddingLeft:8,color:'#374151',background:'#f9fafb',position:'sticky',left:0,whiteSpace:'nowrap'}}>Полный остаток, %</td>
+                <td style={{...S.td,textAlign:'left',paddingLeft:8,color:'var(--text2)',background:'#f9fafb',position:'sticky',left:0,whiteSpace:'nowrap'}}>Полный остаток, %</td>
                 {rows1.map((r,i)=><td key={i} style={{...S.tdR,fontWeight:400}}>{fmt(r.full)}</td>)}
                 <td style={S.td}/>
               </tr>
               <tr style={{background:'#eff6ff'}}>
-                <td style={{...S.td,textAlign:'left',paddingLeft:8,fontWeight:400,color:'#1a1a2e',background:'#dbeafe',position:'sticky',left:0,whiteSpace:'nowrap'}}>Полный проход, %</td>
+                <td style={{...S.td,textAlign:'left',paddingLeft:8,fontWeight:400,color:'var(--text)',background:'#dbeafe',position:'sticky',left:0,whiteSpace:'nowrap'}}>Полный проход, %</td>
                 {rows1.map((r,i)=>(
-                  <td key={i} style={{...S.tdG,background:'#eff6ff',color:'#185fa5',fontWeight:700}}>
+                  <td key={i} style={{...S.tdG,background:'#eff6ff',color:'var(--primary)',fontWeight:700}}>
                     {i===N-1?'—':fmt(r.pass)}
                   </td>
                 ))}
@@ -473,19 +473,19 @@ export default function TestABS({sampleId,testId,takenSampleIds=[],onClose}){
                   </td>
                 </tr>
                 <tr>
-                  <td style={{...S.td,textAlign:'left',paddingLeft:8,color:'#374151',background:'#f9fafb',position:'sticky',left:0,whiteSpace:'nowrap'}}>Частный остаток, %</td>
-                  {rows2.map((r,i)=><td key={i} style={{...S.tdR,color:'#374151',fontWeight:400}}>{fmt(r.part)}</td>)}
+                  <td style={{...S.td,textAlign:'left',paddingLeft:8,color:'var(--text2)',background:'#f9fafb',position:'sticky',left:0,whiteSpace:'nowrap'}}>Частный остаток, %</td>
+                  {rows2.map((r,i)=><td key={i} style={{...S.tdR,color:'var(--text2)',fontWeight:400}}>{fmt(r.part)}</td>)}
                   <td style={S.td}/>
                 </tr>
                 <tr style={{background:'#fafafa'}}>
-                  <td style={{...S.td,textAlign:'left',paddingLeft:8,color:'#374151',background:'#f9fafb',position:'sticky',left:0,whiteSpace:'nowrap'}}>Полный остаток, %</td>
-                  {rows2.map((r,i)=><td key={i} style={{...S.tdR,color:'#374151',fontWeight:400}}>{fmt(r.full)}</td>)}
+                  <td style={{...S.td,textAlign:'left',paddingLeft:8,color:'var(--text2)',background:'#f9fafb',position:'sticky',left:0,whiteSpace:'nowrap'}}>Полный остаток, %</td>
+                  {rows2.map((r,i)=><td key={i} style={{...S.tdR,color:'var(--text2)',fontWeight:400}}>{fmt(r.full)}</td>)}
                   <td style={S.td}/>
                 </tr>
                 <tr style={{background:'#eff6ff'}}>
-                  <td style={{...S.td,textAlign:'left',paddingLeft:8,fontWeight:400,color:'#1a1a2e',background:'#dbeafe',position:'sticky',left:0,whiteSpace:'nowrap'}}>Полный проход, %</td>
+                  <td style={{...S.td,textAlign:'left',paddingLeft:8,fontWeight:400,color:'var(--text)',background:'#dbeafe',position:'sticky',left:0,whiteSpace:'nowrap'}}>Полный проход, %</td>
                   {rows2.map((r,i)=>(
-                    <td key={i} style={{...S.tdG,background:'#eff6ff',color:'#185fa5',fontWeight:700}}>
+                    <td key={i} style={{...S.tdG,background:'#eff6ff',color:'var(--primary)',fontWeight:700}}>
                       {i===N-1?'—':fmt(r.pass)}
                     </td>
                   ))}
@@ -546,7 +546,7 @@ export default function TestABS({sampleId,testId,takenSampleIds=[],onClose}){
       {/* === 3. Объёмная плотность === */}
       <div style={S.sec}>
         <div style={S.secH}>3. Объёмная плотность — гидростатика</div>
-        <div style={{fontSize:11,color:'#888',marginBottom:8}}>&rho; = m&#x441;&#x443;&#x445; / (m&#x43d;&#x430;&#x441; &minus; m&#x432;&#x43e;&#x434;&#x430;)</div>
+        <div style={{fontSize:11,color:'var(--text4)',marginBottom:8}}>&rho; = m&#x441;&#x443;&#x445; / (m&#x43d;&#x430;&#x441; &minus; m&#x432;&#x43e;&#x434;&#x430;)</div>
         <div style={{overflowX:'auto'}}>
         <table style={{borderCollapse:'collapse',fontSize:12,minWidth:560}}>
           <thead><tr>
@@ -657,7 +657,7 @@ export default function TestABS({sampleId,testId,takenSampleIds=[],onClose}){
           style={{padding:'10px 28px',background:saving?'#aaa':'#185fa5',color:'#fff',border:'none',borderRadius:6,fontSize:14,fontWeight:600,cursor:saving?'default':'pointer'}}>
           {saving?'Сохраняю...':(isEdit?'Сохранить изменения':'Сохранить')}
         </button>
-        <button type="button" onClick={()=>void handleClose()} style={{padding:'10px 18px',background:'transparent',color:'#666',border:'1px solid #ddd',borderRadius:6,fontSize:14,cursor:'pointer'}}>Закрыть</button>
+        <button type="button" onClick={()=>void handleClose()} style={{padding:'10px 18px',background:'transparent',color:'#666',border:'1px solid var(--inp-border)',borderRadius:6,fontSize:14,cursor:'pointer'}}>Закрыть</button>
       </div>
 
       </>}

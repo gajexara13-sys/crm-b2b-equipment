@@ -43,6 +43,8 @@ class CommercialQuote(Base):
     terms_price_validity = Column(Text)
     terms_lead_time = Column(Text)
 
+    request_id = Column(Integer, ForeignKey("requests.id"), nullable=True, index=True)
+
     pdf_file_path = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react'
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import axios from 'axios'
 import TestABS from './TestABS'
 import PageFunnel from './Funnel'
@@ -65,7 +65,7 @@ function Login({ onLogin }) {
   }
   return (
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#1a1a2e'}}>
-      <div style={{background:'#fff',borderRadius:12,padding:'2rem',width:360,boxShadow:'0 4px 24px rgba(0,0,0,0.15)'}}>
+      <div style={{background:'var(--surface)',borderRadius:12,padding:'2rem',width:360,boxShadow:'0 4px 24px rgba(0,0,0,0.15)'}}>
         <h2 style={{marginBottom:'0.25rem',color:'#1a1a2e'}}>CRM RUTEST</h2>
         <p style={{color:'#666',fontSize:13,marginBottom:'1.5rem'}}>B2B продажи лабораторного оборудования</p>
         {err && <div style={{background:'#fee',color:'#c00',padding:'8px 12px',borderRadius:6,marginBottom:12,fontSize:13}}>{err}</div>}
@@ -85,7 +85,7 @@ const lbl = {display:'block',fontSize:12,color:'var(--text3)',marginBottom:4,fon
 
 // ── кнопки в таблицах (простые outline / заливка) ───────────────────────────
 const btnT = { fontSize:12, padding:'4px 10px', borderRadius:5, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap' }
-const btnBlue   = { ...btnT, border:'1px solid #185fa5', background:'#eff6ff', color:'#185fa5' }
+const btnBlue   = { ...btnT, border:'1px solid #185fa5', background:'#eff6ff', color:'var(--primary)' }
 const btnRed    = { ...btnT, border:'1px solid #fecaca', background:'#fff5f5', color:'#dc2626' }
 const btnPurple = { ...btnT, border:'1px solid #c4b5fd', background:'#f5f3ff', color:'#7c3aed' }
 const btnGreen  = { ...btnT, border:'1px solid #86efac', background:'#f0fdf4', color:'#166534' }
@@ -95,14 +95,13 @@ const btnSecond = { padding:'8px 16px', borderRadius:6, fontSize:13, cursor:'poi
 
 const NAV_ALL = [
   {section:'CRM'},
-  {to:'/requests',label:'Заявки'},
-  {to:'/funnel',label:'Воронка'},
+  {to:'/funnel',label:'Доска'},
   {to:'/today',label:'Задачи'},
   {to:'/quotes',label:'Коммерческие предложения'},
-  {to:'/sender-profiles',label:'Профили отправителей'},
   {section:'БАЗА'},
   {to:'/catalog-products',label:'Каталог товаров'},
   {to:'/contractors',label:'Контрагенты'},
+  {to:'/sender-profiles',label:'Профили отправителей'},
   {to:'/contacts',label:'Контакты'},
   {to:'/objects',label:'Объекты'},
   {to:'/services',label:'Каталог услуг'},
@@ -187,7 +186,7 @@ function Layout({ user, onLogout }) {
           <Route path="/equipment" element={<PageEquipment />} />
           <Route path="/standards" element={<PageStandards />} />
           <Route path="/funnel" element={<PageFunnel user={user} />} />
-          <Route path="*" element={<Navigate to={isSales ? '/today' : '/requests'} replace />} />
+          <Route path="*" element={<Navigate to={isSales ? '/today' : '/funnel'} replace />} />
         </Routes>
       </main>
     </div>
@@ -216,13 +215,18 @@ function Btn({onClick,children,variant='primary',type='button',disabled}) {
 function Th({children}) { return <th style={{textAlign:'left',padding:'8px 10px',color:'var(--text4)',fontWeight:500,fontSize:12,borderBottom:'2px solid var(--border)',whiteSpace:'nowrap'}}>{children}</th> }
 function Td({children,bold}) { return <td style={{padding:'8px 10px',fontSize:13,color:bold?'var(--primary)':'var(--text2)',fontWeight:bold?500:400,borderBottom:'1px solid var(--border2)'}}>{children||'—'}</td> }
 
-const MATERIAL_TYPES = [
-  {v:'abs_58401',l:'АБС / ЩМАС по ГОСТ Р 58401'},
-  {v:'abs_58406',l:'АБС / ЩМАС по ГОСТ Р 58406'},
-  {v:'pbv',l:'ПБВ по ГОСТ Р 58400.2'},
-  {v:'crushed_stone',l:'Щебень / гравий ГОСТ 32703'},
-  {v:'sand',l:'Песок ГОСТ 32730 / 32824'},
+const SOURCES = [
+  {v:'',              l:'— не указан —'},
+  {v:'inbound_call',  l:'📞 Входящий звонок'},
+  {v:'outbound_call', l:'📲 Исходящий (холодный) звонок'},
+  {v:'email',         l:'📧 Email / сайт'},
+  {v:'referral',      l:'🤝 Рекомендация'},
+  {v:'exhibition',    l:'🏛 Выставка / конференция'},
+  {v:'tender',        l:'📋 Тендер / запрос'},
+  {v:'repeat',        l:'🔄 Повторный клиент'},
+  {v:'other',         l:'Другое'},
 ]
+const sourceLabel = v => SOURCES.find(s=>s.v===v)?.l || v || '—'
 
 function parseSampleJsonArr(s){
   if(s==null||s==='') return []
@@ -514,13 +518,13 @@ function SampleForm({ requests, onSave, onCancel, initial }) {
   const row2 = {display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}
   const row3 = {display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:12}
   return (
-    <form onSubmit={submit} style={{background:'#f8f9ff',border:'1px solid #dde3f5',borderRadius:10,padding:'1.25rem',marginBottom:'1rem'}}>
+    <form onSubmit={submit} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:10,padding:'1.25rem',marginBottom:'1rem'}}>
       <h3 style={{fontSize:14,fontWeight:600,color:'#1a1a2e',marginBottom:'1rem',paddingBottom:8,borderBottom:'1px solid #e8ecf5'}}>
         {initial?.id ? 'Редактировать пробу' : 'Регистрация новой пробы'}
       </h3>
 
-      <div style={{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid #e8ecf5'}}>
-        <div style={{fontSize:11,fontWeight:600,color:'#185fa5',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Связь с заявкой</div>
+      <div style={{background:'var(--surface)',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid var(--border)'}}>
+        <div style={{fontSize:11,fontWeight:600,color:'var(--primary)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Связь с заявкой</div>
         <div style={row2}>
           <div>
             <label style={lbl}>Заявка</label>
@@ -539,8 +543,8 @@ function SampleForm({ requests, onSave, onCancel, initial }) {
         </div>
       </div>
 
-      <div style={{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid #e8ecf5'}}>
-        <div style={{fontSize:11,fontWeight:600,color:'#185fa5',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Справочник заявки (категория, материал, прайс)</div>
+      <div style={{background:'var(--surface)',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid var(--border)'}}>
+        <div style={{fontSize:11,fontWeight:600,color:'var(--primary)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Справочник заявки (категория, материал, прайс)</div>
         <p style={{fontSize:12,color:'var(--text3)',margin:'0 0 10px',lineHeight:1.45}}>Совпадает с заполнением заявки: выберите категорию и объект испытаний — список показателей подставится из справочника. При выборе заявки выше поля можно подтянуть из неё.</p>
         <div style={row2}>
           <div>
@@ -609,8 +613,8 @@ function SampleForm({ requests, onSave, onCancel, initial }) {
         ):null}
       </div>
 
-      <div style={{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid #e8ecf5'}}>
-        <div style={{fontSize:11,fontWeight:600,color:'#185fa5',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Материал</div>
+      <div style={{background:'var(--surface)',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid var(--border)'}}>
+        <div style={{fontSize:11,fontWeight:600,color:'var(--primary)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Материал</div>
         <div style={row2}>
           <div>
             <label style={lbl}>Вид материала *</label>
@@ -671,8 +675,8 @@ function SampleForm({ requests, onSave, onCancel, initial }) {
       </div>
 
       {selectedNorm&&(
-        <div style={{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid #e8ecf5'}}>
-          <div style={{fontSize:11,fontWeight:600,color:'#185fa5',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Нормативные документы по материалу</div>
+        <div style={{background:'var(--surface)',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid var(--border)'}}>
+          <div style={{fontSize:11,fontWeight:600,color:'var(--primary)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Нормативные документы по материалу</div>
           {selectedNorm.primary_standards?.length>0?(
             <>
               <div style={{fontSize:12,fontWeight:600,color:'var(--text)',marginBottom:8}}>НД по материалу — один обязательный (столбец 3 файла)</div>
@@ -746,8 +750,8 @@ function SampleForm({ requests, onSave, onCancel, initial }) {
       )}
 
       {f.material_norm_id?(
-        <div style={{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid #e8ecf5'}}>
-          <div style={{fontSize:11,fontWeight:600,color:'#185fa5',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Показатели и методики (область аккредитации)</div>
+        <div style={{background:'var(--surface)',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid var(--border)'}}>
+          <div style={{fontSize:11,fontWeight:600,color:'var(--primary)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Показатели и методики (область аккредитации)</div>
           <p style={{fontSize:12,color:'var(--text3)',margin:'0 0 8px'}}>Отфильтровано по материалу из каталога услуг. Отметьте нужные строки.</p>
           {catItems.length===0?(
             <p style={{fontSize:12,color:'#b45309'}}>Нет позиций каталога для этого материала. Импортируйте каталог услуг или проверьте совпадение названия с блоком «Объект испытаний» в CSV области аккредитации.</p>
@@ -764,8 +768,8 @@ function SampleForm({ requests, onSave, onCancel, initial }) {
         </div>
       ):null}
 
-      <div style={{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid #e8ecf5'}}>
-        <div style={{fontSize:11,fontWeight:600,color:'#185fa5',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Даты</div>
+      <div style={{background:'var(--surface)',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid var(--border)'}}>
+        <div style={{fontSize:11,fontWeight:600,color:'var(--primary)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Даты</div>
         <div style={row3}>
           <div>
             <label style={lbl}>Дата отбора пробы</label>
@@ -779,8 +783,8 @@ function SampleForm({ requests, onSave, onCancel, initial }) {
         </div>
       </div>
 
-      <div style={{background:'#fff',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid #e8ecf5'}}>
-        <div style={{fontSize:11,fontWeight:600,color:'#185fa5',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Место и условия отбора</div>
+      <div style={{background:'var(--surface)',borderRadius:8,padding:'1rem',marginBottom:12,border:'1px solid var(--border)'}}>
+        <div style={{fontSize:11,fontWeight:600,color:'var(--primary)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>Место и условия отбора</div>
         <div style={{marginBottom:12}}>
           <label style={lbl}>Место отбора пробы *</label>
           <input value={f.sampling_location} onChange={e=>set('sampling_location',e.target.value)} placeholder="г. Уфа, ул. Кирова, д. 10, км 3+400" style={inp}/>
@@ -847,17 +851,17 @@ function PageSamples() {
             </tr></thead>
             <tbody>
               {filtered.map(r=>(
-                <tr key={r.id} style={{borderBottom:'1px solid #f5f5f5'}}>
+                <tr key={r.id} style={{borderBottom:'1px solid var(--border2)'}}>
                   <Td bold>{r.lab_number}</Td>
                   <Td>{r.material_name || matLabel(r.material_type)}</Td>
                   <Td>{r.material_grade}</Td>
                   <Td>{r.sampling_location}</Td>
                   <Td>{r.sampling_date}</Td>
                   <Td>{r.registration_date}</Td>
-                  <td style={{padding:'8px 10px',borderBottom:'1px solid #f5f5f5'}}>
+                  <td style={{padding:'8px 10px',borderBottom:'1px solid var(--border2)'}}>
 {(()=>{const st=STAGE_LABELS[r.stage||'new_request']||STAGE_LABELS['new_request'];return <span style={{fontSize:11,padding:'3px 8px',borderRadius:4,background:st.bg,color:st.color,whiteSpace:'nowrap',fontWeight:500}}>{st.label}</span>})()}
 </td>
-                  <td style={{padding:'6px 10px',borderBottom:'1px solid #f5f5f5'}}>
+                  <td style={{padding:'6px 10px',borderBottom:'1px solid var(--border2)'}}>
                     <button type="button" onClick={()=>onEdit(r)} style={btnBlue}>Изменить</button>
                   </td>
                 </tr>
@@ -865,7 +869,7 @@ function PageSamples() {
             </tbody>
           </table>
         </div>
-        {filtered.length===0 && <p style={{color:'#999',textAlign:'center',padding:'2rem',fontSize:13}}>{filter?'Ничего не найдено':'Проб пока нет — нажмите «+ Новая проба»'}</p>}
+        {filtered.length===0 && <p style={{color:'var(--text4)',textAlign:'center',padding:'2rem',fontSize:13}}>{filter?'Ничего не найдено':'Проб пока нет — нажмите «+ Новая проба»'}</p>}
       </Card>
     </>
   )
@@ -883,23 +887,21 @@ const STAGE_LABELS={
   upd:{label:'Подписание УПД',color:'#22c55e',bg:'#f0fdf4'},
 }
 const EMPTY_REQ = {
-  client_id:'',
-  material_type:'abs_58401',
-  test_types:'',
-  quantity:1,
-  urgency:'normal',
-  price:'',
-  notes:'',
-  material_category_id:'',
-  material_test_object_id:'',
-  material_variant:'',
-  selected_indicator_ids:[],
+  client_id: '',
+  contact_name: '',
+  description: '',
+  source: '',
+  quantity: 1,
+  price: '',
+  urgency: 'normal',
+  assigned_to: '',
+  notes: '',
 }
 
 const NOTE_TYPES=[
   {v:'call',    l:'📞 Звонок',        color:'#0ea5e9', bg:'#e0f2fe'},
   {v:'meeting', l:'🤝 Встреча',       color:'#8b5cf6', bg:'#ede9fe'},
-  {v:'note',    l:'📝 Заметка',       color:'#64748b', bg:'#f1f5f9'},
+  {v:'note',    l:'📝 Заметка',       color:'var(--text3)', bg:'#f1f5f9'},
   {v:'agreement',l:'✅ Договорились', color:'#16a34a', bg:'#dcfce7'},
   {v:'email',   l:'📧 Email',         color:'#f59e0b', bg:'#fef3c7'},
   {v:'file',    l:'📎 Файл/ссылка',   color:'#ec4899', bg:'#fce7f3'},
@@ -942,7 +944,7 @@ function RequestTimeline({req, clients, onClose}){
   const fmtDt=s=>{if(!s)return'';const d=new Date(s);return d.toLocaleDateString('ru',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'})}
 
   return(
-    <div style={{background:'#fff',borderRadius:10,padding:'1.5rem',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+    <div style={{background:'var(--surface)',borderRadius:10,padding:'1.5rem',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
       {/* Шапка */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16,paddingBottom:12,borderBottom:'2px solid #e8ecf5'}}>
         <div>
@@ -950,24 +952,25 @@ function RequestTimeline({req, clients, onClose}){
             <h2 style={{margin:0,fontSize:16,fontWeight:700}}>История: {req.number}</h2>
             <span style={{fontSize:11,padding:'3px 8px',borderRadius:4,background:st.bg,color:st.color,fontWeight:500}}>{st.label}</span>
           </div>
-          <div style={{fontSize:12,color:'#64748b'}}>
+          <div style={{fontSize:12,color:'var(--text3)'}}>
             {client?.name||'Клиент не указан'}
-            {req.material_type&&<> · {MATERIAL_TYPES.find(m=>m.v===req.material_type)?.l||req.material_type}</>}
+            {req.contact_name&&<> · {req.contact_name}</>}
+            {req.material_type&&<> · {req.material_type}</>}
             {req.price&&<> · {Number(req.price).toLocaleString('ru')} ₽</>}
           </div>
         </div>
-        <button onClick={onClose} style={{padding:'6px 14px',background:'transparent',color:'#64748b',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,cursor:'pointer'}}>← Назад</button>
+        <button onClick={onClose} style={{padding:'6px 14px',background:'transparent',color:'var(--text3)',border:'1px solid var(--border)',borderRadius:6,fontSize:13,cursor:'pointer'}}>← Назад</button>
       </div>
 
       {/* Форма добавления */}
-      <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,padding:'14px 16px',marginBottom:20}}>
-        <div style={{fontSize:12,fontWeight:600,color:'#374151',marginBottom:8}}>Добавить запись</div>
+      <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,padding:'14px 16px',marginBottom:20}}>
+        <div style={{fontSize:12,fontWeight:600,color:'var(--text2)',marginBottom:8}}>Добавить запись</div>
         <div style={{display:'flex',gap:8,marginBottom:8,flexWrap:'wrap'}}>
           {NOTE_TYPES.map(t=>(
             <button key={t.v} onClick={()=>setNType(t.v)}
               style={{fontSize:11,padding:'5px 10px',borderRadius:6,cursor:'pointer',fontWeight:nType===t.v?700:400,
                 border:nType===t.v?`2px solid ${t.color}`:'1px solid #e2e8f0',
-                background:nType===t.v?t.bg:'#fff',color:nType===t.v?t.color:'#64748b'}}>
+                background:nType===t.v?t.bg:'#fff',color:nType===t.v?t.color:'var(--text3)'}}>
               {t.l}
             </button>
           ))}
@@ -975,7 +978,7 @@ function RequestTimeline({req, clients, onClose}){
         <textarea value={nText} onChange={e=>setNText(e.target.value)}
           onKeyDown={e=>{if(e.ctrlKey&&e.key==='Enter')addNote()}}
           placeholder="О чём договорились, суть звонка, ссылка на файл... (Ctrl+Enter для отправки)"
-          rows={3} style={{width:'100%',boxSizing:'border-box',padding:'8px 10px',border:'1px solid #ddd',borderRadius:6,fontSize:13,resize:'vertical',fontFamily:'inherit'}}/>
+          rows={3} style={{width:'100%',boxSizing:'border-box',padding:'8px 10px',border:'1px solid var(--inp-border)',borderRadius:6,fontSize:13,resize:'vertical',fontFamily:'inherit'}}/>
         <div style={{display:'flex',justifyContent:'flex-end',marginTop:6}}>
           <button onClick={addNote} disabled={saving||!nText.trim()}
             style={{...btnPrimary,padding:'5px 14px',opacity:saving||!nText.trim()?0.5:1,cursor:saving||!nText.trim()?'default':'pointer'}}>
@@ -1001,11 +1004,11 @@ function RequestTimeline({req, clients, onClose}){
                       <div style={{width:30,height:30,borderRadius:'50%',background:nt.bg,border:`2px solid ${nt.color}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0,zIndex:1}}>
                         {nt.l.slice(0,2)}
                       </div>
-                      <div style={{flex:1,background:'#fff',border:'1px solid #e8ecf5',borderRadius:8,padding:'10px 14px',boxShadow:'0 1px 2px rgba(0,0,0,0.04)'}}>
+                      <div style={{flex:1,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 14px',boxShadow:'0 1px 2px rgba(0,0,0,0.04)'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
                           <div style={{display:'flex',gap:8,alignItems:'center'}}>
                             <span style={{fontSize:11,padding:'2px 7px',borderRadius:4,background:nt.bg,color:nt.color,fontWeight:600}}>{nt.l}</span>
-                            <span style={{fontSize:11,color:'#64748b',fontWeight:500}}>{n.author_name}</span>
+                            <span style={{fontSize:11,color:'var(--text3)',fontWeight:500}}>{n.author_name}</span>
                           </div>
                           <div style={{display:'flex',gap:8,alignItems:'center'}}>
                             <span style={{fontSize:11,color:'#94a3b8'}}>{fmtDt(n.created_at)}</span>
@@ -1025,101 +1028,64 @@ function RequestTimeline({req, clients, onClose}){
 }
 
 function PageRequests() {
+  const navigate=useNavigate()
+  const location=useLocation()
   const [rows,setRows]=useState([])
   const [clients,setClients]=useState([])
+  const [users,setUsers]=useState([])
   const [editing,setEditing]=useState(null)
   const [form,setForm]=useState(EMPTY_REQ)
   const [timelineReq,setTimelineReq]=useState(null)
-  const [refCats,setRefCats]=useState([])
-  const [refObjects,setRefObjects]=useState([])
-  const [refIndicators,setRefIndicators]=useState([])
-  const [refSyncBusy,setRefSyncBusy]=useState(false)
-  const confirm = useConfirm()
+  const confirm=useConfirm()
+
   const load=()=>api.get('/requests').then(r=>setRows(r.data))
-  useEffect(()=>{load();api.get('/clients').then(r=>setClients(r.data))},[])
-  useEffect(()=>{api.get('/reference/categories').then(r=>setRefCats(r.data)).catch(()=>setRefCats([]))},[])
   useEffect(()=>{
-    if(!form.material_category_id){ setRefObjects([]); return }
-    api.get('/reference/test-objects',{params:{category_id:form.material_category_id}}).then(r=>setRefObjects(r.data)).catch(()=>setRefObjects([]))
-  },[form.material_category_id])
+    load()
+    api.get('/clients').then(r=>setClients(r.data))
+    api.get('/auth/users').then(r=>setUsers(r.data)).catch(()=>setUsers([]))
+  },[])
   useEffect(()=>{
-    if(!form.material_test_object_id){ setRefIndicators([]); return }
-    api.get('/reference/indicators',{params:{test_object_id:form.material_test_object_id}}).then(r=>setRefIndicators(r.data)).catch(()=>setRefIndicators([]))
-  },[form.material_test_object_id])
+    if(location.state?.openNew){setForm({...EMPTY_REQ});setEditing({})}
+  },[location.state])
 
-  const selectedRefObj = refObjects.find(o=>String(o.id)===String(form.material_test_object_id))
-  const refVariantOpts = parseVariantOptions(selectedRefObj?.variants_json)
-  const refPriceSum = (refIndicators||[]).reduce((s,it)=>{
-    if(!(form.selected_indicator_ids||[]).includes(it.id)) return s
-    return s+(Number(it.price_rub)||0)
-  },0)
-
-  const toggleIndicator=id=>{
-    setForm(f=>{
-      const arr=[...(f.selected_indicator_ids||[])]
-      const i=arr.indexOf(id)
-      if(i>=0) arr.splice(i,1)
-      else arr.push(id)
-      return {...f,selected_indicator_ids:arr}
-    })
-  }
-
-  const syncReference=async()=>{
-    const ok=await confirm({
-      title:'Синхронизация справочника',
-      message:'Пересобрать категории, объекты и показатели из загруженных CSV (material_norms + каталог)? Существующие строки справочника будут очищены и заново заполнены.',
-      danger:true,
-      confirmText:'Синхронизировать',
-    })
-    if(!ok) return
-    setRefSyncBusy(true)
-    try{
-      await api.post('/reference/sync-from-legacy')
-      const r=await api.get('/reference/categories')
-      setRefCats(r.data)
-      alert('Справочник обновлён.')
-    }catch(e){ alert(e.response?.data?.detail||e.message) }
-    finally{ setRefSyncBusy(false) }
-  }
-
-  const openNew=()=>{setForm({...EMPTY_REQ,selected_indicator_ids:[]});setEditing({})}
+  const openNew=()=>{setForm({...EMPTY_REQ});setEditing({})}
   const openEdit=r=>{
     setForm({
-      client_id:r.client_id||'',
-      material_type:r.material_type||'abs_58401',
-      test_types:r.test_types||'',
-      quantity:r.quantity||1,
-      urgency:r.urgency||'normal',
-      price:r.price||'',
-      notes:r.notes||'',
-      material_category_id:r.material_category_id!=null?String(r.material_category_id):'',
-      material_test_object_id:r.material_test_object_id!=null?String(r.material_test_object_id):'',
-      material_variant:r.material_variant||'',
-      selected_indicator_ids:Array.isArray(r.selected_indicator_ids)?[...r.selected_indicator_ids]:[],
+      client_id: r.client_id||'',
+      contact_name: r.contact_name||'',
+      description: r.material_type||'',
+      source: r.source||r.test_types||'',
+      quantity: r.quantity||1,
+      price: r.price||'',
+      urgency: r.urgency||'normal',
+      assigned_to: r.assigned_to||'',
+      notes: r.notes||'',
     })
     setEditing(r)
   }
   const cancel=()=>setEditing(null)
 
   const save=async()=>{
-    const indIds=form.selected_indicator_ids||[]
+    if(!form.client_id){alert('Выберите клиента');return}
     const payload={
-      client_id:+form.client_id||null,
-      material_type:form.material_type,
-      test_types:form.test_types||null,
-      quantity:+form.quantity||1,
-      urgency:form.urgency,
-      price: indIds.length ? null : (form.price ? +form.price : null),
-      notes:form.notes||null,
-      material_category_id: form.material_category_id ? +form.material_category_id : null,
-      material_test_object_id: form.material_test_object_id ? +form.material_test_object_id : null,
-      material_variant: form.material_variant || null,
-      selected_indicator_ids: indIds,
+      client_id: +form.client_id,
+      contact_name: form.contact_name||null,
+      material_type: form.description||null,
+      source: form.source||null,
+      test_types: form.source||null,
+      quantity: +form.quantity||1,
+      price: form.price?+form.price:null,
+      urgency: form.urgency,
+      assigned_to: form.assigned_to?+form.assigned_to:null,
+      notes: form.notes||null,
     }
-    if(editing?.id) await api.put(`/requests/${editing.id}`,payload)
-    else await api.post('/requests',payload)
-    setEditing(null); load()
+    try{
+      if(editing?.id) await api.put(`/requests/${editing.id}`,payload)
+      else await api.post('/requests',payload)
+      setEditing(null); load()
+    }catch(e){alert(e.response?.data?.detail||e.message||'Ошибка сохранения')}
   }
+
   const del=async r=>{
     const ok=await confirm({
       title:'Удаление заявки',
@@ -1133,146 +1099,151 @@ function PageRequests() {
 
   if(timelineReq) return <RequestTimeline req={timelineReq} clients={clients} onClose={()=>setTimelineReq(null)}/>
 
-  const chkReq = { fontSize:12, display:'flex', alignItems:'flex-start', gap:6, marginBottom:6, color:'var(--text2)', cursor:'pointer' }
+  const f=form, sf=v=>setForm(p=>({...p,...v}))
 
   return (
-    <Card title={`Заявки (${rows.length})`} action={!editing&&(
+    <Card title={`Заявки (${rows.length})`} action={
       <div style={{display:'flex',gap:8,alignItems:'center'}}>
-        <Btn variant="secondary" onClick={()=>void syncReference()} disabled={refSyncBusy}>{refSyncBusy?'…':'Справочник из CSV'}</Btn>
-        <Btn onClick={openNew}>+ Новая заявка</Btn>
+        <Btn variant="secondary" onClick={()=>navigate('/funnel')}>← Назад</Btn>
+        {!editing&&<Btn onClick={openNew}>+ Новая заявка</Btn>}
       </div>
-    )}>
+    }>
       {editing!==null && (
-        <div style={{background:'#f8f9ff',border:'1px solid #dde3f5',borderRadius:10,padding:'1.25rem',marginBottom:'1rem'}}>
-          <div style={{fontSize:13,fontWeight:600,color:'#185fa5',marginBottom:12}}>{editing?.id?`Редактировать заявку ${editing.number}`:'Новая заявка'}</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-            <div><label style={lbl}>Клиент</label>
-              <select value={form.client_id} onChange={e=>setForm({...form,client_id:e.target.value})} style={sel}>
-                <option value="">Выберите клиента</option>
-                {clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div><label style={lbl}>Вид материала</label>
-              <select value={form.material_type} onChange={e=>setForm({...form,material_type:e.target.value})} style={sel}>
-                {MATERIAL_TYPES.map(m=><option key={m.v} value={m.v}>{m.l}</option>)}
-              </select>
-            </div>
-            <div style={{gridColumn:'1 / -1'}}>
-              <div style={{fontSize:12,fontWeight:600,color:'#374151',marginBottom:8}}>Справочник испытаний</div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                <div><label style={lbl}>Категория объекта испытаний</label>
-                  <select
-                    value={form.material_category_id}
-                    onChange={e=>setForm({...form,material_category_id:e.target.value,material_test_object_id:'',material_variant:'',selected_indicator_ids:[]})}
-                    style={sel}
-                  >
-                    <option value="">— Не выбрано —</option>
-                    {refCats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div><label style={lbl}>Объект испытаний</label>
-                  <select
-                    value={form.material_test_object_id}
-                    onChange={e=>setForm({...form,material_test_object_id:e.target.value,material_variant:'',selected_indicator_ids:[]})}
-                    disabled={!form.material_category_id}
-                    style={sel}
-                  >
-                    <option value="">{form.material_category_id?'— Выберите объект —':'Сначала категорию'}</option>
-                    {refObjects.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}
-                  </select>
-                </div>
-                <div><label style={lbl}>Марка / класс / фракция</label>
-                  {refVariantOpts.length>0 ? (
-                    <select value={form.material_variant} onChange={e=>setForm({...form,material_variant:e.target.value})} style={sel}>
-                      <option value="">— Укажите вариант —</option>
-                      {refVariantOpts.map(v=><option key={v} value={v}>{v}</option>)}
-                    </select>
-                  ) : (
-                    <input value={form.material_variant} onChange={e=>setForm({...form,material_variant:e.target.value})} placeholder="Вручную" style={inp}/>
-                  )}
-                </div>
-                <div><label style={lbl}>Сумма по прайсу (выбранные показатели)</label>
-                  <div style={{...inp,display:'flex',alignItems:'center',marginBottom:10,background:'#f8fafc',color:'#0f172a'}}>
-                    {(form.selected_indicator_ids||[]).length ? `${refPriceSum.toLocaleString('ru')} ₽` : '—'}
-                  </div>
-                </div>
+        <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:10,padding:'1.5rem',marginBottom:'1rem'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--primary)',marginBottom:16}}>
+            {editing?.id?`Редактировать заявку ${editing.number}`:'Новая заявка'}
+          </div>
+
+          {/* Блок 1: Клиент */}
+          <div style={{marginBottom:16,padding:'12px 14px',background:'var(--surface)',borderRadius:8,border:'1px solid var(--border)'}}>
+            <div style={{fontSize:11,fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>Клиент</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              <div>
+                <label style={lbl}>Организация <span style={{color:'#ef4444'}}>*</span></label>
+                <select value={f.client_id} onChange={e=>sf({client_id:e.target.value})} style={sel}>
+                  <option value="">— выберите клиента —</option>
+                  {clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
               </div>
-              {form.material_test_object_id ? (
-                refIndicators.length===0 ? (
-                  <p style={{fontSize:12,color:'#b45309',margin:'8px 0 0'}}>Нет показателей для объекта. Загрузите CSV и нажмите «Справочник из CSV» в списке заявок.</p>
-                ) : (
-                  <div style={{maxHeight:240,overflowY:'auto',border:'1px solid #e2e8f0',borderRadius:8,padding:8,marginTop:8}}>
-                    {refIndicators.map(it=>(
-                      <label key={it.id} style={{...chkReq,marginBottom:8,alignItems:'flex-start'}}>
-                        <input type="checkbox" checked={(form.selected_indicator_ids||[]).includes(it.id)} onChange={()=>toggleIndicator(it.id)}/>
-                        <span>
-                          <b>{it.characteristic}</b>
-                          {it.standard_ref?` — ${it.standard_ref}`:''}
-                          <span style={{color:'#64748b',fontSize:11}}>
-                            {it.price_code?` · ${it.price_code}`:''}
-                            {it.price_rub!=null?` · ${Number(it.price_rub).toLocaleString('ru')} ₽`:''}
-                          </span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )
-              ):null}
-            </div>
-            <div><label style={lbl}>Виды испытаний</label>
-              <input value={form.test_types} onChange={e=>setForm({...form,test_types:e.target.value})} placeholder="Полный комплекс по ГОСТ" style={inp}/>
-            </div>
-            <div><label style={lbl}>Количество проб</label>
-              <input value={form.quantity} onChange={e=>setForm({...form,quantity:e.target.value})} type="number" min="1" style={inp}/>
-            </div>
-            <div><label style={lbl}>Стоимость, ₽ {!((form.selected_indicator_ids||[]).length)&&<span style={{fontWeight:400,color:'#94a3b8'}}>(вручную, если показатели не выбраны)</span>}</label>
-              <input
-                value={form.price}
-                onChange={e=>setForm({...form,price:e.target.value})}
-                type="number"
-                min="0"
-                placeholder="0"
-                style={inp}
-                disabled={!!(form.selected_indicator_ids||[]).length}
-              />
-            </div>
-            <div><label style={lbl}>Срочность</label>
-              <select value={form.urgency} onChange={e=>setForm({...form,urgency:e.target.value})} style={sel}>
-                <option value="normal">Обычная</option>
-                <option value="high">Высокая</option>
-                <option value="urgent">Срочно</option>
-              </select>
+              <div>
+                <label style={lbl}>Контактное лицо</label>
+                <input value={f.contact_name} onChange={e=>sf({contact_name:e.target.value})}
+                  placeholder={f.client_id?clients.find(c=>String(c.id)===String(f.client_id))?.contact_name||'Иван Иванович':'Иван Иванович'}
+                  style={inp}/>
+              </div>
             </div>
           </div>
-          <textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Примечания" rows={2} style={{...inp,resize:'vertical'}}/>
-          <div style={{display:'flex',gap:8,marginTop:8}}><Btn onClick={save}>Сохранить</Btn><Btn variant="secondary" onClick={cancel}>Отмена</Btn></div>
+
+          {/* Блок 2: Запрос */}
+          <div style={{marginBottom:16,padding:'12px 14px',background:'var(--surface)',borderRadius:8,border:'1px solid var(--border)'}}>
+            <div style={{fontSize:11,fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>Запрос</div>
+            <div>
+              <label style={lbl}>Что интересует / Описание запроса</label>
+              <textarea value={f.description} onChange={e=>sf({description:e.target.value})}
+                placeholder="Например: анализатор влажности, спектрофотометр UV-Vis, рефрактометр Аббе, весы аналитические…"
+                rows={3} style={{...inp,resize:'vertical',marginBottom:0}}/>
+            </div>
+          </div>
+
+          {/* Блок 3: Параметры сделки */}
+          <div style={{marginBottom:16,padding:'12px 14px',background:'var(--surface)',borderRadius:8,border:'1px solid var(--border)'}}>
+            <div style={{fontSize:11,fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>Параметры сделки</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+              <div>
+                <label style={lbl}>Количество единиц</label>
+                <input value={f.quantity} onChange={e=>sf({quantity:e.target.value})} type="number" min="1" style={inp}/>
+              </div>
+              <div>
+                <label style={lbl}>Предполагаемый бюджет, ₽</label>
+                <input value={f.price} onChange={e=>sf({price:e.target.value})} type="number" min="0" placeholder="0" style={inp}/>
+              </div>
+              <div>
+                <label style={lbl}>Срочность</label>
+                <select value={f.urgency} onChange={e=>sf({urgency:e.target.value})} style={sel}>
+                  <option value="normal">🟢 Обычная</option>
+                  <option value="high">🟡 Высокая</option>
+                  <option value="urgent">🔴 Срочно</option>
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Источник заявки</label>
+                <select value={f.source} onChange={e=>sf({source:e.target.value})} style={sel}>
+                  {SOURCES.map(s=><option key={s.v} value={s.v}>{s.l}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Ответственный менеджер</label>
+                <select value={f.assigned_to} onChange={e=>sf({assigned_to:e.target.value})} style={sel}>
+                  <option value="">— не назначен —</option>
+                  {users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Примечания */}
+          <div style={{marginBottom:12}}>
+            <label style={lbl}>Примечания</label>
+            <textarea value={f.notes} onChange={e=>sf({notes:e.target.value})}
+              placeholder="Любые дополнительные сведения, особые требования клиента…"
+              rows={2} style={{...inp,resize:'vertical',marginBottom:0}}/>
+          </div>
+
+          <div style={{display:'flex',gap:8}}>
+            <Btn onClick={save}>Сохранить</Btn>
+            <Btn variant="secondary" onClick={cancel}>Отмена</Btn>
+          </div>
         </div>
       )}
+
       <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-        <thead><tr><Th>№</Th><Th>Клиент</Th><Th>Материал</Th><Th>Показ.</Th><Th>Кол-во</Th><Th>Цена</Th><Th>Этап</Th><Th>Дата</Th><Th>Действия</Th></tr></thead>
-        <tbody>{rows.map(r=>(
-          <tr key={r.id} style={{borderBottom:'1px solid #f5f5f5'}}>
-            <Td bold>{r.number}</Td>
-            <Td>{clients.find(c=>c.id===r.client_id)?.name}</Td>
-            <Td>{MATERIAL_TYPES.find(m=>m.v===r.material_type)?.l||r.material_type}</Td>
-            <Td style={{padding:'6px 10px',borderBottom:'1px solid #f5f5f5',color:'#64748b',fontSize:12}}>
-              {Array.isArray(r.selected_indicator_ids)&&r.selected_indicator_ids.length?`${r.selected_indicator_ids.length} шт.`:'—'}
-            </Td>
-            <Td>{r.quantity}</Td>
-            <Td>{r.price?Number(r.price).toLocaleString('ru')+' ₽':''}</Td>
-            <td style={{padding:'6px 10px',borderBottom:'1px solid #f5f5f5'}}>
-              {(()=>{const st=STAGE_LABELS[r.stage||'new_request']||STAGE_LABELS['new_request'];return <span style={{fontSize:11,padding:'3px 8px',borderRadius:4,background:st.bg,color:st.color,whiteSpace:'nowrap',fontWeight:500}}>{st.label}</span>})()}
-            </td>
-            <Td>{r.created_at?.slice(0,10)}</Td>
-            <td style={{padding:'6px 10px',whiteSpace:'nowrap'}}>
-              <button type="button" onClick={()=>setTimelineReq(r)} style={{...btnPurple,marginRight:6}}>📋 История</button>
-              <button type="button" onClick={()=>openEdit(r)} style={{...btnBlue,marginRight:6}}>Изменить</button>
-              <button type="button" onClick={()=>del(r)} style={btnRed}>Удалить</button>
-            </td>
-          </tr>
-        ))}</tbody>
+        <thead><tr>
+          <Th>№</Th>
+          <Th>Клиент / Контакт</Th>
+          <Th>Что интересует</Th>
+          <Th>Источник</Th>
+          <Th>Бюджет</Th>
+          <Th>Этап</Th>
+          <Th>Дата</Th>
+          <Th>Действия</Th>
+        </tr></thead>
+        <tbody>{rows.map(r=>{
+          const client=clients.find(c=>c.id===r.client_id)
+          const stg=STAGE_LABELS[r.stage||'new_request']||STAGE_LABELS['new_request']
+          const urgColors={normal:'#10b981',high:'#f59e0b',urgent:'#ef4444'}
+          return(
+            <tr key={r.id} style={{borderBottom:'1px solid var(--border2)'}}>
+              <Td bold>
+                <div style={{display:'flex',alignItems:'center',gap:5}}>
+                  <span style={{width:8,height:8,borderRadius:'50%',background:urgColors[r.urgency||'normal'],display:'inline-block',flexShrink:0}}/>
+                  {r.number}
+                </div>
+              </Td>
+              <td style={{padding:'8px 10px',borderBottom:'1px solid var(--border2)'}}>
+                <div style={{fontWeight:500,color:'var(--text)'}}>{client?.name||'—'}</div>
+                {r.contact_name&&<div style={{fontSize:11,color:'var(--text3)',marginTop:1}}>{r.contact_name}</div>}
+              </td>
+              <td style={{padding:'8px 10px',borderBottom:'1px solid var(--border2)',color:'var(--text2)',maxWidth:200}}>
+                <div style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.material_type||'—'}</div>
+              </td>
+              <td style={{padding:'8px 10px',borderBottom:'1px solid var(--border2)',color:'var(--text3)',fontSize:12}}>
+                {sourceLabel(r.source||r.test_types)}
+              </td>
+              <Td>{r.price?Number(r.price).toLocaleString('ru')+' ₽':'—'}</Td>
+              <td style={{padding:'8px 10px',borderBottom:'1px solid var(--border2)'}}>
+                <span style={{fontSize:11,padding:'3px 8px',borderRadius:4,background:stg.bg,color:stg.color,whiteSpace:'nowrap',fontWeight:500}}>{stg.label}</span>
+              </td>
+              <Td>{r.created_at?.slice(0,10)}</Td>
+              <td style={{padding:'6px 10px',whiteSpace:'nowrap'}}>
+                <button type="button" onClick={()=>setTimelineReq(r)} style={{...btnPurple,marginRight:6}}>📋 История</button>
+                <button type="button" onClick={()=>openEdit(r)} style={{...btnBlue,marginRight:6}}>Изменить</button>
+                <button type="button" onClick={()=>del(r)} style={btnRed}>Удалить</button>
+              </td>
+            </tr>
+          )
+        })}</tbody>
       </table>
-      {rows.length===0 && <p style={{color:'#999',textAlign:'center',padding:'2rem',fontSize:13}}>Заявок пока нет</p>}
+      {rows.length===0&&<p style={{color:'var(--text4)',textAlign:'center',padding:'2rem',fontSize:13}}>Заявок пока нет</p>}
     </Card>
   )
 }
@@ -1306,8 +1277,8 @@ function PageContractors() {
   return (
     <Card title={`Контрагенты (${rows.length})`} action={!editing&&<Btn onClick={openNew}>+ Новый контрагент</Btn>}>
       {editing!==null && (
-        <div style={{background:'#f8f9ff',border:'1px solid #dde3f5',borderRadius:10,padding:'1.25rem',marginBottom:'1rem'}}>
-          <div style={{fontSize:13,fontWeight:600,color:'#185fa5',marginBottom:12}}>{editing?.id?'Редактировать контрагента':'Новый контрагент'}</div>
+        <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:10,padding:'1.25rem',marginBottom:'1rem'}}>
+          <div style={{fontSize:13,fontWeight:600,color:'var(--primary)',marginBottom:12}}>{editing?.id?'Редактировать контрагента':'Новый контрагент'}</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
             {CLIENT_FIELDS.map(([k,p,req])=>(
               <div key={k}><label style={lbl}>{p}</label>
@@ -1321,7 +1292,7 @@ function PageContractors() {
       <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
         <thead><tr><Th>Организация</Th><Th>ИНН</Th><Th>Руководитель</Th><Th>Должность</Th><Th>Телефон</Th><Th>Email</Th><Th>Адрес</Th><Th>Действия</Th></tr></thead>
         <tbody>{rows.map(r=>(
-          <tr key={r.id} style={{borderBottom:'1px solid #f5f5f5'}}>
+          <tr key={r.id} style={{borderBottom:'1px solid var(--border2)'}}>
             <Td bold>{r.name}</Td><Td>{r.inn}</Td><Td>{r.contact_name}</Td><Td>{r.contact_position}</Td><Td>{r.contact_phone}</Td><Td>{r.contact_email}</Td><Td>{r.address}</Td>
             <td style={{padding:'6px 10px',whiteSpace:'nowrap'}}>
               <button type="button" onClick={()=>openEdit(r)} style={{...btnBlue,marginRight:6}}>Изменить</button>
@@ -1330,7 +1301,7 @@ function PageContractors() {
           </tr>
         ))}</tbody>
       </table>
-      {rows.length===0 && <p style={{color:'#999',textAlign:'center',padding:'2rem',fontSize:13}}>Контрагентов пока нет</p>}
+      {rows.length===0 && <p style={{color:'var(--text4)',textAlign:'center',padding:'2rem',fontSize:13}}>Контрагентов пока нет</p>}
     </Card>
   )
 }
@@ -1348,12 +1319,12 @@ function PageContacts() {
     <Card title={`Контакты (${filt.length})`}>
       <div style={{marginBottom:12}}>
         <input value={q} onChange={e=>setQ(e.target.value)} placeholder="🔍 Поиск по имени, телефону, email..."
-          style={{padding:'7px 10px',border:'1px solid #ddd',borderRadius:6,fontSize:13,width:320}}/>
+          style={{padding:'7px 10px',border:'1px solid var(--inp-border)',borderRadius:6,fontSize:13,width:320}}/>
       </div>
       <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
         <thead><tr><Th>ФИО контакта</Th><Th>Телефон</Th><Th>Email</Th><Th>Организация</Th></tr></thead>
         <tbody>{filt.filter(r=>r.contact_name||r.contact_phone||r.contact_email).map(r=>(
-          <tr key={r.id} style={{borderBottom:'1px solid #f5f5f5'}}>
+          <tr key={r.id} style={{borderBottom:'1px solid var(--border2)'}}>
             <Td bold>{r.contact_name||'—'}</Td>
             <Td>{r.contact_phone}</Td>
             <Td>{r.contact_email}</Td>
@@ -1362,7 +1333,7 @@ function PageContacts() {
         ))}</tbody>
       </table>
       {filt.filter(r=>r.contact_name||r.contact_phone||r.contact_email).length===0&&
-        <p style={{color:'#999',textAlign:'center',padding:'2rem',fontSize:13}}>Контактные данные не заполнены. Добавьте контакты в карточках контрагентов.</p>}
+        <p style={{color:'var(--text4)',textAlign:'center',padding:'2rem',fontSize:13}}>Контактные данные не заполнены. Добавьте контакты в карточках контрагентов.</p>}
     </Card>
   )
 }
@@ -1370,19 +1341,19 @@ function PageContacts() {
 function StubPage({title,icon,desc,items}){
   return(
     <div>
-      <div style={{background:'#fff',borderRadius:10,padding:'2rem',marginBottom:'1rem',boxShadow:'0 1px 4px rgba(0,0,0,0.06)',textAlign:'center'}}>
+      <div style={{background:'var(--surface)',borderRadius:10,padding:'2rem',marginBottom:'1rem',boxShadow:'0 1px 4px rgba(0,0,0,0.06)',textAlign:'center'}}>
         <div style={{fontSize:48,marginBottom:12}}>{icon}</div>
         <h2 style={{fontSize:20,fontWeight:700,color:'#1a1a2e',marginBottom:8}}>{title}</h2>
-        <p style={{fontSize:13,color:'#64748b',maxWidth:480,margin:'0 auto 20px'}}>{desc}</p>
+        <p style={{fontSize:13,color:'var(--text3)',maxWidth:480,margin:'0 auto 20px'}}>{desc}</p>
         <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'#fef9c3',border:'1px solid #fde68a',borderRadius:8,padding:'8px 16px',fontSize:12,color:'#92400e',fontWeight:500}}>
           🚧 Раздел в разработке
         </div>
       </div>
       {items&&items.length>0&&(
-        <div style={{background:'#fff',borderRadius:10,padding:'1.25rem',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
-          <div style={{fontSize:13,fontWeight:600,color:'#374151',marginBottom:12}}>Что будет в этом разделе:</div>
+        <div style={{background:'var(--surface)',borderRadius:10,padding:'1.25rem',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+          <div style={{fontSize:13,fontWeight:600,color:'var(--text2)',marginBottom:12}}>Что будет в этом разделе:</div>
           <ul style={{margin:0,padding:'0 0 0 20px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 24px'}}>
-            {items.map((it,i)=><li key={i} style={{fontSize:13,color:'#64748b',padding:'3px 0'}}>{it}</li>)}
+            {items.map((it,i)=><li key={i} style={{fontSize:13,color:'var(--text3)',padding:'3px 0'}}>{it}</li>)}
           </ul>
         </div>
       )}
@@ -1710,7 +1681,7 @@ function PageTests(){
   })
   const hasFilter=fSearch||fGost||fProto||fDateFrom||fDateTo
   const clearF=()=>{setFSearch('');setFGost('');setFProto('');setFDateFrom('');setFDateTo('')}
-  const fi={padding:'6px 10px',border:'1px solid #ddd',borderRadius:6,fontSize:12,background:'#fff'}
+  const fi={padding:'6px 10px',border:'1px solid var(--inp-border)',borderRadius:6,fontSize:12,background:'#fff'}
   const downloadProtocol=async(protId)=>{
     const token=localStorage.getItem('token')
     try{
@@ -1764,7 +1735,7 @@ function PageTests(){
     <Card title={`Карточки испытаний (${filtered.length}${hasFilter?` из ${rows.length}`:''})`} action={
       <Btn onClick={()=>{setSelTestId(null);setSelSampleId(null);setShowForm(true)}}>+ Новая карточка</Btn>
     }>
-      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginBottom:12,padding:'10px 12px',background:'#f8fafc',borderRadius:8,border:'1px solid #e2e8f0'}}>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginBottom:12,padding:'10px 12px',background:'var(--surface2)',borderRadius:8,border:'1px solid var(--border)'}}>
         <input value={fSearch} onChange={e=>setFSearch(e.target.value)} placeholder="🔍 ID, проба, материал..." style={{...fi,minWidth:200,flex:1}}/>
         <select value={fGost} onChange={e=>setFGost(e.target.value)} style={fi}>
           <option value="">Все ГОСТы</option>
@@ -1777,7 +1748,7 @@ function PageTests(){
           <option value="no">Нет протокола</option>
         </select>
         <div style={{display:'flex',gap:4,alignItems:'center'}}>
-          <span style={{fontSize:11,color:'#64748b'}}>Дата:</span>
+          <span style={{fontSize:11,color:'var(--text3)'}}>Дата:</span>
           <input type="date" value={fDateFrom} onChange={e=>setFDateFrom(e.target.value)} style={{...fi,width:130}}/>
           <span style={{fontSize:11,color:'#94a3b8'}}>—</span>
           <input type="date" value={fDateTo} onChange={e=>setFDateTo(e.target.value)} style={{...fi,width:130}}/>
@@ -1858,7 +1829,7 @@ function PageProtocols() {
   })
   const hasFilter=fSearch||fStatus||fDateFrom||fDateTo
   const clearF=()=>{setFSearch('');setFStatus('');setFDateFrom('');setFDateTo('')}
-  const fi={padding:'6px 10px',border:'1px solid #ddd',borderRadius:6,fontSize:12,background:'#fff'}
+  const fi={padding:'6px 10px',border:'1px solid var(--inp-border)',borderRadius:6,fontSize:12,background:'#fff'}
   const onUpload=async e=>{
     e.preventDefault()
     const input=document.getElementById('protocol-template-file')
@@ -1900,7 +1871,7 @@ function PageProtocols() {
   const STATUS_LABEL={draft:'Черновик',review:'На проверке',signed:'Подписан',sent:'Отправлен'}
   return (
     <Card title={`Протоколы (${filtered.length}${hasFilter?` из ${rows.length}`:''})`}>
-      <div style={{background:'#f8f9ff',border:'1px solid #dde3f5',borderRadius:10,padding:'1rem',marginBottom:'1rem'}}>
+      <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:10,padding:'1rem',marginBottom:'1rem'}}>
         <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Шаблон протокола (.xlsx)</div>
         {tplStatus && (
           <p style={{fontSize:12,color:'#555',margin:'0 0 10px'}}>
@@ -1920,7 +1891,7 @@ function PageProtocols() {
       {signErr && <div style={{background:'#fef2f2',color:'#b91c1c',padding:'8px 12px',borderRadius:6,fontSize:13,marginBottom:10}}>{signErr}</div>}
 
       {/* Панель фильтров */}
-      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginBottom:12,padding:'10px 12px',background:'#f8fafc',borderRadius:8,border:'1px solid #e2e8f0'}}>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginBottom:12,padding:'10px 12px',background:'var(--surface2)',borderRadius:8,border:'1px solid var(--border)'}}>
         <input value={fSearch} onChange={e=>setFSearch(e.target.value)} placeholder="🔍 Номер протокола, заключение..." style={{...fi,minWidth:220,flex:1}}/>
         <select value={fStatus} onChange={e=>setFStatus(e.target.value)} style={fi}>
           <option value="">Все статусы</option>
@@ -1930,7 +1901,7 @@ function PageProtocols() {
           <option value="sent">Отправлен</option>
         </select>
         <div style={{display:'flex',gap:4,alignItems:'center'}}>
-          <span style={{fontSize:11,color:'#64748b'}}>Дата:</span>
+          <span style={{fontSize:11,color:'var(--text3)'}}>Дата:</span>
           <input type="date" value={fDateFrom} onChange={e=>setFDateFrom(e.target.value)} style={{...fi,width:130}}/>
           <span style={{fontSize:11,color:'#94a3b8'}}>—</span>
           <input type="date" value={fDateTo} onChange={e=>setFDateTo(e.target.value)} style={{...fi,width:130}}/>
@@ -1947,7 +1918,7 @@ function PageProtocols() {
             <Td bold>{r.number}</Td>
             <Td>{r.created_at?.slice(0,10)}</Td>
             <Td>{r.sample_id ? `#${r.sample_id}` : '—'}</Td>
-            <td style={{padding:'6px 10px',borderBottom:'1px solid #f5f5f5'}}>
+            <td style={{padding:'6px 10px',borderBottom:'1px solid var(--border2)'}}>
               <span style={{
                 fontSize:11,padding:'3px 8px',borderRadius:4,fontWeight:500,
                 background: r.status==='signed'?'#dcfce7':r.status==='sent'?'#dbeafe':r.status==='review'?'#fef9c3':'#f1f5f9',
@@ -1957,7 +1928,7 @@ function PageProtocols() {
               </span>
             </td>
             <Td>{r.conclusion||'—'}</Td>
-            <td style={{padding:'6px 10px',borderBottom:'1px solid #f5f5f5',whiteSpace:'nowrap'}}>
+            <td style={{padding:'6px 10px',borderBottom:'1px solid var(--border2)',whiteSpace:'nowrap'}}>
               <button type="button" onClick={()=>onDownload(r.id)} style={{...btnBlue,marginRight:6}}>↓ .xlsx</button>
               {canSign && r.status==='draft' && (
                 <button type="button" onClick={()=>onSign(r.id)} style={btnGreen}>Подписать</button>
@@ -1967,7 +1938,7 @@ function PageProtocols() {
           </tr>
         ))}</tbody>
       </table>
-      {filtered.length===0 && <p style={{color:'#999',textAlign:'center',padding:'2rem',fontSize:13}}>
+      {filtered.length===0 && <p style={{color:'var(--text4)',textAlign:'center',padding:'2rem',fontSize:13}}>
         {hasFilter?'Ничего не найдено — попробуйте изменить фильтры':'Протоколов пока нет. Сохраните карточку испытания — протокол создастся автоматически.'}
       </p>}
     </Card>

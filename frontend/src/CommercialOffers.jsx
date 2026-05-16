@@ -2,6 +2,37 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import axios from 'axios'
 import Modal from './Modal'
 
+function IconDocx({ size = 36 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Лист бумаги */}
+      <path d="M2 4C2 2.9 2.9 2 4 2H24L34 12V40C34 41.1 33.1 42 32 42H4C2.9 42 2 41.1 2 40V4Z" fill="white" stroke="#d1d5db" strokeWidth="1"/>
+      {/* Загнутый уголок */}
+      <path d="M24 2L34 12H26C24.9 12 24 11.1 24 10V2Z" fill="#d1d5db"/>
+      {/* Цветная полоса снизу */}
+      <rect x="2" y="28" width="32" height="14" rx="0" fill="#2B579A"/>
+      <path d="M2 28H34V40C34 41.1 33.1 42 32 42H4C2.9 42 2 41.1 2 40V28Z" fill="#2B579A"/>
+      {/* Текст */}
+      <text x="18" y="39" textAnchor="middle" fontFamily="Arial, sans-serif" fontWeight="800" fontSize="9" fill="white" letterSpacing="0.4">DOCX</text>
+    </svg>
+  )
+}
+
+function IconPdf({ size = 36 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Лист бумаги */}
+      <path d="M2 4C2 2.9 2.9 2 4 2H24L34 12V40C34 41.1 33.1 42 32 42H4C2.9 42 2 41.1 2 40V4Z" fill="white" stroke="#d1d5db" strokeWidth="1"/>
+      {/* Загнутый уголок */}
+      <path d="M24 2L34 12H26C24.9 12 24 11.1 24 10V2Z" fill="#d1d5db"/>
+      {/* Цветная полоса снизу */}
+      <path d="M2 28H34V40C34 41.1 33.1 42 32 42H4C2.9 42 2 41.1 2 40V28Z" fill="#D93025"/>
+      {/* Текст */}
+      <text x="18" y="39" textAnchor="middle" fontFamily="Arial, sans-serif" fontWeight="800" fontSize="10" fill="white" letterSpacing="0.5">PDF</text>
+    </svg>
+  )
+}
+
 const api = axios.create({ baseURL: '/api' })
 api.interceptors.request.use(c => {
   const t = localStorage.getItem('token')
@@ -41,14 +72,14 @@ function ComboInput({ value, onChange, options, placeholder }) {
         >▾</button>
       </div>
       {open && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.10)', marginTop: 3, overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background:'var(--surface)', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 6px 24px rgba(0,0,0,0.10)', marginTop: 3, overflow: 'hidden' }}>
           {options.map((opt, i) => (
             <div
               key={i}
               onMouseDown={() => pick(opt)}
-              style={{ padding: '9px 14px', fontSize: 14, color: '#1e293b', cursor: 'pointer', borderBottom: i < options.length - 1 ? '1px solid #f1f5f9' : 'none', background: value === opt ? '#f0f6ff' : '#fff' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
-              onMouseLeave={e => e.currentTarget.style.background = value === opt ? '#f0f6ff' : '#fff'}
+              style={{ padding: '9px 14px', fontSize: 14, color: '#1e293b', cursor: 'pointer', borderBottom: i < options.length - 1 ? '1px solid var(--border2)' : 'none', background: value === opt ? 'var(--primary-bg)' : 'var(--surface)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+              onMouseLeave={e => e.currentTarget.style.background = value === opt ? 'var(--primary-bg)' : 'var(--surface)'}
             >{opt}</div>
           ))}
         </div>
@@ -165,11 +196,111 @@ function CompanyAutocomplete({ value, companyName, onSelect }) {
   )
 }
 
+// ─── Request autocomplete ─────────────────────────────────────────────────────
+function RequestAutocomplete({ value, requestLabel, onSelect, onClear }) {
+  const [query, setQuery] = useState(requestLabel || '')
+  const [results, setResults] = useState([])
+  const [open, setOpen] = useState(false)
+  const timer = useRef(null)
+  const wrapRef = useRef(null)
+
+  useEffect(() => { setQuery(requestLabel || '') }, [requestLabel])
+
+  const doSearch = q => {
+    clearTimeout(timer.current)
+    timer.current = setTimeout(async () => {
+      try {
+        const r = await api.get('/crm/quotes/requests/search', { params: { q } })
+        setResults(r.data || [])
+        setOpen(true)
+      } catch (_) {}
+    }, q ? 220 : 0)
+  }
+
+  const handleChange = e => {
+    const q = e.target.value
+    setQuery(q)
+    if (!q) { onClear(); setOpen(false); return }
+    doSearch(q)
+  }
+
+  const handleFocus = () => {
+    if (results.length) { setOpen(true); return }
+    doSearch(query)
+  }
+
+  const pick = item => {
+    setQuery(`${item.number}${item.client_name ? ' — ' + item.client_name : ''}`)
+    setOpen(false)
+    onSelect(item)
+  }
+
+  const STAGE_LABELS = {
+    new_request: 'Новая', negotiation: 'Согласование', contract: 'Договор',
+    waiting_samples: 'Ожидание проб', in_work: 'В работе',
+    waiting_payment: 'Ожидание оплаты', results: 'Результаты', upd: 'УПД',
+  }
+
+  useEffect(() => {
+    const handler = e => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative' }}>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input
+          style={{ ...inp, flex: 1, marginBottom: 0 }}
+          value={query}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          placeholder="Номер или название клиента…"
+          autoComplete="off"
+        />
+        {value && (
+          <button type="button" onClick={() => { setQuery(''); onClear() }}
+            style={{ padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 6, background: 'transparent', color: 'var(--text3)', cursor: 'pointer', fontSize: 13 }}>
+            ✕
+          </button>
+        )}
+      </div>
+      {open && results.length > 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 2000,
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,.18)', maxHeight: 280, overflowY: 'auto',
+        }}>
+          {results.map(item => (
+            <div
+              key={item.id}
+              onMouseDown={() => pick(item)}
+              style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border2)', fontSize: 13 }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
+              onMouseLeave={e => e.currentTarget.style.background = ''}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text)' }}>{item.number}</span>
+                <span style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--bg2)', padding: '1px 6px', borderRadius: 3 }}>
+                  {STAGE_LABELS[item.stage] || item.stage}
+                </span>
+              </div>
+              {item.client_name && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{item.client_name}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function emptyForm() {
   return {
     id: null,
     number: '',
     quote_date: new Date().toISOString().slice(0, 10),
+    request_id: null,
+    request_label: '',
     sender_profile_id: '',
     recipient_company_id: '',
     recipient_company_name: '',
@@ -418,6 +549,10 @@ export default function CommercialOffers() {
       id: q.id,
       number: q.number || '',
       quote_date: q.quote_date || new Date().toISOString().slice(0, 10),
+      request_id: q.request_id || null,
+      request_label: q.request_id
+        ? `${q.request_number || ''}${q.request_client_name ? ' — ' + q.request_client_name : ''}`
+        : '',
       sender_profile_id: q.sender_profile_id ? String(q.sender_profile_id) : '',
       recipient_company_id: q.recipient_company_id ? String(q.recipient_company_id) : '',
       recipient_company_name: q.recipient_name || '',
@@ -465,7 +600,8 @@ export default function CommercialOffers() {
           product_id: p.id,
           model: p.sku || '',
           intro: p.description || '',
-          features_text: (() => { try { const r = JSON.parse(p.tech_specs || ''); if (Array.isArray(r)) return r.map(x => x.key ? `${x.key}: ${x.value}` : x.value).join('\n') } catch (_) {} return p.tech_specs || '' })(),
+          specs: (() => { try { const r = JSON.parse(p.tech_specs || ''); if (Array.isArray(r)) return r.map(x => ({ param: x.key || '', value: x.value || '' })) } catch (_) {} return [] })(),
+          features_text: (() => { try { JSON.parse(p.tech_specs || ''); return '' } catch (_) { return p.tech_specs || '' } })(),
           photo_urls,
           price_without_vat: Number(p.recommended_price || 0),
           price_with_vat: Number(p.price_end_vat || p.recommended_price || 0),
@@ -483,6 +619,7 @@ export default function CommercialOffers() {
       const payload = {
         number: form.number || null,
         quote_date: form.quote_date,
+        request_id: form.request_id || null,
         sender_profile_id: form.sender_profile_id ? Number(form.sender_profile_id) : null,
         recipient_company_id: form.recipient_company_id ? Number(form.recipient_company_id) : null,
         recipient_name: form.recipient_name || null,
@@ -582,11 +719,12 @@ export default function CommercialOffers() {
         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>Коммерческие предложения</h2>
         <button type="button" onClick={openNew} style={{ padding: '10px 18px', border: 'none', borderRadius: 6, background: 'var(--primary)', color: '#fff', fontWeight: 500, cursor: 'pointer' }}>Создать КП</button>
       </div>
-      {err && <div style={{ background: '#fff1f2', color: '#991b1b', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{err}</div>}
+      {err && <div style={{ background:'rgba(239,68,68,0.12)', color: '#991b1b', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{err}</div>}
       {loading ? <p style={{ color: 'var(--text3)' }}>Загрузка…</p> : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead><tr>
             <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '2px solid var(--border)', color: 'var(--text4)' }}>№</th>
+            <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '2px solid var(--border)', color: 'var(--text4)' }}>Заявка</th>
             <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '2px solid var(--border)', color: 'var(--text4)' }}>Дата</th>
             <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '2px solid var(--border)', color: 'var(--text4)' }}>Получатель</th>
             <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '2px solid var(--border)', color: 'var(--text4)' }}>Сумма</th>
@@ -597,30 +735,39 @@ export default function CommercialOffers() {
             {rows.map(r => (
               <tr key={r.id} style={{ borderBottom: '1px solid var(--border2)' }}>
                 <td style={{ padding: '10px', color: 'var(--text)' }}>{r.number || `КП-${r.id}`}</td>
+                <td style={{ padding: '10px', color: 'var(--text2)', fontSize: 12 }}>
+                  {r.request_number
+                    ? <span style={{ background: 'var(--bg2)', padding: '2px 7px', borderRadius: 4, color: 'var(--primary)', fontWeight: 500 }}>{r.request_number}</span>
+                    : <span style={{ color: 'var(--text5)' }}>—</span>}
+                </td>
                 <td style={{ padding: '10px', color: 'var(--text2)' }}>{r.quote_date || '—'}</td>
                 <td style={{ padding: '10px', color: 'var(--text2)' }}>{r.recipient_name || '—'}</td>
                 <td style={{ padding: '10px', textAlign: 'right', color: 'var(--text2)' }}>{Number(r.total_with_vat || 0).toLocaleString('ru-RU')}</td>
                 <td style={{ padding: '10px', color: 'var(--text2)' }}>{r.status}</td>
                 <td style={{ padding: '10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                    <button type="button" onClick={() => downloadExport('docx', r.id, r.number || `KP-${r.id}`)} title="Скачать Word"
-                      style={{ padding: '5px 10px', fontSize: 12, fontWeight: 600, border: '1.5px solid var(--primary)', borderRadius: 6, background: 'transparent', color: 'var(--primary)', cursor: 'pointer', letterSpacing: '0.03em' }}>
-                      DOCX
+                    <button type="button" onClick={() => downloadExport('docx', r.id, r.number || `KP-${r.id}`)} title="Скачать Word (DOCX)"
+                      style={{ padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', borderRadius: 4, lineHeight: 0, opacity: 1, transition: 'opacity 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
+                      onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+                      <IconDocx size={34} />
                     </button>
                     <button type="button" onClick={() => downloadExport('pdf', r.id, r.number || `KP-${r.id}`)} title="Скачать PDF"
-                      style={{ padding: '5px 10px', fontSize: 12, fontWeight: 600, border: '1.5px solid var(--primary)', borderRadius: 6, background: 'transparent', color: 'var(--primary)', cursor: 'pointer', letterSpacing: '0.03em' }}>
-                      PDF
+                      style={{ padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', borderRadius: 4, lineHeight: 0, opacity: 1, transition: 'opacity 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
+                      onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+                      <IconPdf size={34} />
                     </button>
                     <button type="button" onClick={() => openEdit(r)}
-                      style={{ padding: '5px 12px', fontSize: 13, fontWeight: 500, border: 'none', borderRadius: 6, background: 'var(--primary)', color: '#fff', cursor: 'pointer' }}>
+                      style={{ padding: '6px 12px', fontSize: 12, fontWeight: 500, border: '1px solid #185fa5', borderRadius: 5, background: '#eff6ff', color: '#185fa5', cursor: 'pointer' }}>
                       Изменить
                     </button>
                     <button type="button" onClick={() => duplicate(r.id)}
-                      style={{ padding: '5px 12px', fontSize: 13, fontWeight: 500, border: '1.5px solid #64748b', borderRadius: 6, background: 'transparent', color: '#64748b', cursor: 'pointer' }}>
+                      style={{ padding: '6px 12px', fontSize: 12, fontWeight: 500, border: '1px solid #94a3b8', borderRadius: 5, background: '#f8fafc', color: '#64748b', cursor: 'pointer' }}>
                       Дубль
                     </button>
                     <button type="button" onClick={() => remove(r.id)}
-                      style={{ padding: '5px 12px', fontSize: 13, fontWeight: 500, border: '1.5px solid #dc2626', borderRadius: 6, background: 'transparent', color: '#dc2626', cursor: 'pointer' }}>
+                      style={{ padding: '6px 12px', fontSize: 12, fontWeight: 500, border: '1px solid #fecaca', borderRadius: 5, background: '#fff5f5', color: '#dc2626', cursor: 'pointer' }}>
                       Удалить
                     </button>
                   </div>
@@ -636,6 +783,40 @@ export default function CommercialOffers() {
         <Modal onClose={() => setOpen(false)} zIndex={1200} maxWidth={980}>
           <div style={{ background: 'var(--surface)', borderRadius: 12, padding: '1.25rem' }}>
             <h3 style={{ marginTop: 0 }}>{form.id ? 'Редактирование КП' : 'Новое КП'}</h3>
+
+            {/* Привязка к заявке */}
+            <div style={{ marginBottom: 14, padding: '10px 14px', background: 'var(--bg2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+              <label style={{ ...lbl, marginBottom: 6 }}>
+                Заявка <span style={{ color: 'var(--text4)', fontWeight: 400 }}>(обязательно выберите заявку)</span>
+              </label>
+              <RequestAutocomplete
+                value={form.request_id}
+                requestLabel={form.request_label}
+                onSelect={req => {
+                  setForm(f => ({
+                    ...f,
+                    request_id: req.id,
+                    request_label: `${req.number}${req.client_name ? ' — ' + req.client_name : ''}`,
+                    // Авто-заполнение получателя из клиента заявки (если ещё не заполнено)
+                    recipient_name: f.recipient_name || req.client_name || '',
+                    recipient_address: f.recipient_address || req.client_address || '',
+                    recipient_contact_name: f.recipient_contact_name || req.client_contact_name || '',
+                    recipient_contact_position: f.recipient_contact_position || req.client_contact_position || '',
+                  }))
+                }}
+                onClear={() => setForm(f => ({ ...f, request_id: null, request_label: '' }))}
+              />
+              {!form.request_id && (
+                <div style={{ fontSize: 11, color: '#d97706', marginTop: 4 }}>
+                  ⚠ КП привязывается к заявке для отслеживания воронки продаж
+                </div>
+              )}
+              {form.request_id && (
+                <div style={{ fontSize: 11, color: '#15803d', marginTop: 4 }}>
+                  ✓ Заявка выбрана
+                </div>
+              )}
+            </div>
 
             {/* Шапка */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
@@ -847,7 +1028,7 @@ export default function CommercialOffers() {
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button type="button" onClick={() => setOpen(false)}
-                style={{ padding: '9px 18px', fontSize: 13, fontWeight: 500, border: '1.5px solid #64748b', borderRadius: 6, background: 'transparent', color: '#64748b', cursor: 'pointer' }}>
+                style={{ padding: '9px 18px', fontSize: 13, fontWeight: 500, border: '1.5px solid #64748b', borderRadius: 6, background: 'transparent', color:'var(--text3)', cursor: 'pointer' }}>
                 Отмена
               </button>
               {form.id ? (

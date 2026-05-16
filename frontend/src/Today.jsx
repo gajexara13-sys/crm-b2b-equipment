@@ -15,7 +15,7 @@ const btnT = { fontSize:12, padding:'5px 14px', borderRadius:6, cursor:'pointer'
 const btnGreen = { ...btnT, border:'none', background:'#16a34a', color:'#fff' }
 const btnRedOutline = { ...btnT, border:'1px solid #fca5a5', background:'#fff', color:'#dc2626' }
 const btnRedSolid = { ...btnT, border:'none', background:'#dc2626', color:'#fff' }
-const btnGray   = { ...btnT, border:'1px solid #e2e8f0', background:'#fff', color:'#64748b', fontWeight:500 }
+const btnGray   = { ...btnT, border:'1px solid var(--border)', background:'#fff', color:'var(--text3)', fontWeight:500 }
 const btnPrimary= { padding:'9px 18px', borderRadius:8, fontSize:13, cursor:'pointer', border:'none', background:'#0f172a', color:'#fff', fontWeight:600, whiteSpace:'nowrap', alignSelf:'flex-end' }
 
 const TASK_TYPE_LABELS = {
@@ -209,11 +209,11 @@ export default function PageTasks({ user }) {
       <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Задачи</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color:'var(--text3)' }}>
             Все активные задачи по сделкам. Без задачи с дедлайном нельзя сменить этап в воронке.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 10, padding: 4 }}>
+        <div style={{ display: 'flex', gap: 4, background:'var(--surface2)', borderRadius: 10, padding: 4 }}>
           {[
             { key: 'active', label: `Активные${tasks.length ? ` (${tasks.length})` : ''}` },
             { key: 'history', label: `История${history.length ? ` (${history.length})` : ''}` },
@@ -228,7 +228,7 @@ export default function PageTasks({ user }) {
 
       {/* Форма быстрого создания */}
       {tab === 'active' && (<>
-      <form onSubmit={submitQuick} style={{ background: '#fff', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid #e2e8f0' }}>
+      <form onSubmit={submitQuick} style={{ background:'var(--surface)', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.07)', border: '1px solid #e2e8f0' }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 10 }}>Запланировать задачу</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 200px 1fr auto', gap: 10, alignItems: 'end' }}>
           <div>
@@ -275,7 +275,7 @@ export default function PageTasks({ user }) {
               <span style={{ fontSize: 13, fontWeight: 700, color: sec.accent }}>{sec.label}</span>
               <span style={{ background: sec.accent, color: '#fff', borderRadius: 10, padding: '1px 8px', fontSize: 11, fontWeight: 700 }}>{list.length}</span>
             </div>
-            <div style={{ background: '#fff', borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+            <div style={{ background:'var(--surface)', borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <tbody>
                   {list.map(t => {
@@ -338,7 +338,7 @@ export default function PageTasks({ user }) {
       })}
 
       {tasks.length === 0 && (
-        <div style={{ background: '#fff', borderRadius: 12, padding: '3rem', textAlign: 'center', color: '#94a3b8', fontSize: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div style={{ background:'var(--surface)', borderRadius: 12, padding: '3rem', textAlign: 'center', color: '#94a3b8', fontSize: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
           Активных задач нет — отличная работа.
         </div>
       )}
@@ -365,14 +365,14 @@ export default function PageTasks({ user }) {
           </div>
 
           {history.length === 0 ? (
-            <div style={{ background: '#fff', borderRadius: 12, padding: '3rem', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
+            <div style={{ background:'var(--surface)', borderRadius: 12, padding: '3rem', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
               История пустая — завершённых задач ещё нет.
             </div>
           ) : (
-            <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+            <div style={{ background:'var(--surface)', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                  <tr style={{ background:'var(--surface2)', borderBottom: '2px solid #e2e8f0' }}>
                     <th style={th}>Завершена</th>
                     <th style={th}>Дедлайн</th>
                     <th style={th}>Заявка</th>
@@ -395,7 +395,7 @@ export default function PageTasks({ user }) {
                       const wasLate = t.due_at && t.completed_at && new Date(t.completed_at) > new Date(t.due_at)
                       return (
                         <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9', background: isFail ? '#fff9f9' : '#fff' }}>
-                          <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', color: '#64748b', fontSize: 12 }}>
+                          <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', color:'var(--text3)', fontSize: 12 }}>
                             {new Date(t.completed_at).toLocaleString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                           </td>
                           <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', fontSize: 12 }}>
@@ -422,7 +422,7 @@ export default function PageTasks({ user }) {
                               <span style={{ color: '#16a34a', fontWeight: 600 }}>✓ Выполнено</span>
                             )}
                           </td>
-                          <td style={{ padding: '10px 14px', color: '#64748b', fontSize: 12 }}>
+                          <td style={{ padding: '10px 14px', color:'var(--text3)', fontSize: 12 }}>
                             {isFail
                               ? t.note.replace('❌ ', '')
                               : t.note ? t.note : '—'
@@ -441,7 +441,7 @@ export default function PageTasks({ user }) {
       {/* Модалка сделки */}
       {sel && (
         <Modal noConfirm onClose={closeModal} zIndex={1000} maxWidth={520}>
-          <div style={{ background: '#fff', borderRadius: 14, padding: '1.5rem', width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px rgba(0,0,0,0.2)' }}>
+          <div style={{ background:'var(--surface)', borderRadius: 14, padding: '1.5rem', width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px rgba(0,0,0,0.2)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{sel.request_number || 'Заявка'}</h3>
               <button type="button" onClick={closeModal} style={{ border: 'none', background: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8' }}>×</button>
@@ -450,14 +450,14 @@ export default function PageTasks({ user }) {
             {err && <div style={{ background: '#fef2f2', color: '#b91c1c', padding: '10px 12px', borderRadius: 8, fontSize: 13, marginBottom: 12 }}>{err}</div>}
 
             {reqDetail && (
-              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7, marginBottom: 14, background: '#f8fafc', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7, marginBottom: 14, background:'var(--surface2)', borderRadius: 8, padding: '10px 12px' }}>
                 <div><b>Клиент:</b> {cName(reqDetail.client_id)}</div>
                 <div><b>Этап:</b> {STAGES.find(s => s.id === stageOf(reqDetail))?.label || stageOf(reqDetail)}</div>
                 {reqDetail.notes && <div><b>Примечание:</b> {reqDetail.notes}</div>}
               </div>
             )}
 
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Этап</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color:'var(--text3)', marginBottom: 6, textTransform: 'uppercase' }}>Этап</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 16 }}>
               {STAGES.map(st => (
                 <button key={st.id} type="button" onClick={() => moveCard(sel.request_id, st.id)}
@@ -468,7 +468,7 @@ export default function PageTasks({ user }) {
             </div>
 
             <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 8, textTransform: 'uppercase' }}>Задачи по сделке</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color:'var(--text3)', marginBottom: 8, textTransform: 'uppercase' }}>Задачи по сделке</div>
               {reqTasks.filter(t => !t.completed_at).length === 0 && (
                 <p style={{ fontSize: 13, color: '#f97316', margin: '0 0 10px', padding: '8px 10px', background: '#fff7ed', borderRadius: 7, border: '1px solid #fed7aa' }}>
                   ⚠ Нет открытой задачи — сделку нельзя перевести на следующий этап
@@ -479,7 +479,7 @@ export default function PageTasks({ user }) {
                   <li key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '7px 10px', borderRadius: 7, background: '#f0fdf4', border: '1px solid #bbf7d0', marginBottom: 5 }}>
                     <span>
                       <b>{TASK_TYPE_LABELS[t.task_type] || t.task_type}</b>
-                      {t.due_at && <span style={{ color: '#64748b', marginLeft: 6 }}>{new Date(t.due_at).toLocaleString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
+                      {t.due_at && <span style={{ color:'var(--text3)', marginLeft: 6 }}>{new Date(t.due_at).toLocaleString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
                       {t.note && <span style={{ color: '#94a3b8', marginLeft: 6, fontSize: 12 }}>— {t.note}</span>}
                     </span>
                     <button type="button" onClick={() => completeTask(t.id)} style={{ ...btnGreen, flexShrink: 0, marginLeft: 8 }}>Выполнено</button>
@@ -487,7 +487,7 @@ export default function PageTasks({ user }) {
                 ))}
               </ul>
 
-              <form onSubmit={addTask} style={{ background: '#f8fafc', borderRadius: 10, padding: '12px' }}>
+              <form onSubmit={addTask} style={{ background:'var(--surface2)', borderRadius: 10, padding: '12px' }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Новая задача</div>
                 <div style={{ display: 'grid', gap: 8 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -508,7 +508,7 @@ export default function PageTasks({ user }) {
   )
 }
 
-const lbl = { display: 'block', fontSize: 11, color: '#64748b', marginBottom: 4, fontWeight: 500 }
+const lbl = { display: 'block', fontSize: 11, color:'var(--text3)', marginBottom: 4, fontWeight: 500 }
 const inp_ = { width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }
 const sel_ = { ...inp_, background: '#fff', cursor: 'pointer' }
-const th = { padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }
+const th = { padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 600, color:'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em' }

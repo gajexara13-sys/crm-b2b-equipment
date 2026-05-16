@@ -57,3 +57,8 @@ def register(name: str, email: str, password: str, role: str = "laborant", db: S
 def me(current_user: User = Depends(get_current_user)):
     return {"id": current_user.id, "name": current_user.name,
             "email": current_user.email, "role": current_user.role}
+
+@router.get("/users")
+def list_users(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    users = db.query(User).order_by(User.name.asc()).all()
+    return [{"id": u.id, "name": u.name, "email": u.email, "role": u.role} for u in users]

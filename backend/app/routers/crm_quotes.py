@@ -15,6 +15,8 @@ from app.models.company import Company
 from app.models.product import Product
 from app.models.quote_sender_profile import QuoteSenderProfile
 from app.models.quote_terms_template import QuoteTermsTemplate
+from app.models.request import Request
+from app.models.client import Client
 from app.quote_document_export import build_quote_docx, build_quote_pdf, safe_filename_part
 from app.quote_docxtpl_export import build_quote_docxtpl
 from app.routers.auth import get_current_user
@@ -71,12 +73,19 @@ def _quote_to_json(q: CommercialQuote, db: Session) -> dict:
                 "calibration_included": it.calibration_included,
             }
         )
+    # Resolve request info
+    req = db.query(Request).filter(Request.id == q.request_id).first() if q.request_id else None
+    req_client = db.query(Client).filter(Client.id == req.client_id).first() if req else None
+
     return {
         "id": q.id,
         "number": q.number,
         "status": q.status,
         "quote_date": q.quote_date,
         "deal_id": q.deal_id,
+        "request_id": q.request_id,
+        "request_number": req.number if req else None,
+        "request_client_name": req_client.name if req_client else None,
         "sender_profile_id": q.sender_profile_id,
         "sender_name": sender.legal_name if sender else None,
         "recipient_company_id": q.recipient_company_id,
@@ -211,6 +220,7 @@ class QuoteIn(BaseModel):
     status: str = "draft"
     quote_date: Optional[date] = None
     deal_id: Optional[int] = None
+    request_id: Optional[int] = None
     sender_profile_id: Optional[int] = None
     recipient_company_id: Optional[int] = None
     recipient_name: Optional[str] = None
@@ -395,10 +405,40 @@ def delete_terms_template(tid: int, db: Session = Depends(get_db), _=Depends(get
     return {"ok": True}
 
 
+@router.get("/requests/search")
+def search_requests(
+    q: str = "",
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """Поиск заявок по номеру или названию клиента для привязки к КП."""
+    query = db.query(Request, Client).outerjoin(Client, Request.client_id == Client.id)
+    if q:
+        query = query.filter(
+            Request.number.ilike(f"%{q}%") | Client.name.ilike(f"%{q}%")
+        )
+    rows = query.order_by(Request.created_at.desc()).limit(20).all()
+    result = []
+    for req, client in rows:
+        result.append({
+            "id": req.id,
+            "number": req.number,
+            "stage": req.stage,
+            "status": req.status,
+            "client_id": req.client_id,
+            "client_name": client.name if client else None,
+            "client_address": client.address if client else None,
+            "client_contact_name": client.contact_name if client else None,
+            "client_contact_position": getattr(client, "contact_position", None) if client else None,
+        })
+    return result
+
+
 @router.get("")
 def list_quotes(
     recipient_company_id: Optional[int] = None,
     status: Optional[str] = None,
+    request_id: Optional[int] = None,
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -407,6 +447,8 @@ def list_quotes(
         q = q.filter(CommercialQuote.recipient_company_id == recipient_company_id)
     if status:
         q = q.filter(CommercialQuote.status == status)
+    if request_id is not None:
+        q = q.filter(CommercialQuote.request_id == request_id)
     rows = q.order_by(CommercialQuote.created_at.desc()).all()
     return [_quote_to_json(r, db) for r in rows]
 
@@ -437,15 +479,34 @@ def export_quote_docx(id: int, db: Session = Depends(get_db), _=Depends(get_curr
 
 @router.get("/{id}/export.pdf")
 def export_quote_pdf(id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    import tempfile, os
     q = db.query(CommercialQuote).filter(CommercialQuote.id == id).first()
     if not q:
         raise HTTPException(404, "КП не найдено")
     ctx = _export_ctx(q, db)
-    try:
-        body = build_quote_pdf(ctx)
-    except RuntimeError as e:
-        raise HTTPException(503, str(e)) from e
     base = safe_filename_part(q.number or f"KP-{q.id}", f"KP-{q.id}")
+
+    # Генерируем DOCX из шаблона, затем конвертируем в PDF через MS Word
+    try:
+        docx_bytes = build_quote_docxtpl(ctx)
+    except Exception as exc:
+        import logging, traceback
+        logging.getLogger(__name__).error("build_quote_docxtpl failed for PDF: %s\n%s", exc, traceback.format_exc())
+        raise HTTPException(500, f"Ошибка генерации DOCX для конвертации в PDF: {exc}") from exc
+
+    try:
+        from docx2pdf import convert
+        with tempfile.TemporaryDirectory() as tmp:
+            docx_path = os.path.join(tmp, f"{base}.docx")
+            pdf_path  = os.path.join(tmp, f"{base}.pdf")
+            with open(docx_path, "wb") as f:
+                f.write(docx_bytes)
+            convert(docx_path, pdf_path)
+            with open(pdf_path, "rb") as f:
+                body = f.read()
+    except Exception as exc:
+        raise HTTPException(503, f"Ошибка конвертации в PDF: {exc}") from exc
+
     fn = f"{base}.pdf"
     return StreamingResponse(
         io.BytesIO(body),
@@ -482,6 +543,7 @@ def create_quote(data: QuoteIn, db: Session = Depends(get_db), _=Depends(get_cur
         status=data.status,
         quote_date=data.quote_date or date.today(),
         deal_id=data.deal_id,
+        request_id=data.request_id,
         sender_profile_id=data.sender_profile_id,
         recipient_company_id=data.recipient_company_id,
         recipient_name=data.recipient_name,
@@ -621,6 +683,7 @@ def duplicate_quote(id: int, db: Session = Depends(get_db), _=Depends(get_curren
         status="draft",
         quote_date=date.today(),
         deal_id=src.deal_id,
+        request_id=src.request_id,
         sender_profile_id=src.sender_profile_id,
         recipient_company_id=src.recipient_company_id,
         recipient_name=src.recipient_name,

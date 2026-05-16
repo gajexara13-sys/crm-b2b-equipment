@@ -50,7 +50,7 @@ function TechSpecsEditor({ rows, onChange }) {
           <button type="button" onClick={() => onChange(rows.filter((_, idx) => idx !== i))} style={{ padding: '2px 8px', border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
       ))}
-      <button type="button" onClick={() => onChange([...rows, { key: '', value: '' }])} style={{ marginTop: 2, fontSize: 12, padding: '3px 10px', border: '1px solid #94a3b8', borderRadius: 4, background: '#f8fafc', cursor: 'pointer' }}>+ Добавить строку</button>
+      <button type="button" onClick={() => onChange([...rows, { key: '', value: '' }])} style={{ marginTop: 2, fontSize: 12, padding: '3px 10px', border: '1px solid #94a3b8', borderRadius: 4, background:'var(--surface2)', cursor: 'pointer' }}>+ Добавить строку</button>
     </div>
   )
 }
@@ -405,7 +405,7 @@ export default function ProductCatalog() {
         </button>
       </div>
 
-      {err && <div style={{ background: '#fff1f2', color: '#991b1b', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{err}</div>}
+      {err && <div style={{ background:'rgba(239,68,68,0.12)', color: '#991b1b', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{err}</div>}
       {okMsg && <div style={{ background: '#ecfdf5', color: '#166534', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{okMsg}</div>}
 
       {loading ? (
