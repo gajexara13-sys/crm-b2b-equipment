@@ -18,7 +18,7 @@ set -euo pipefail
 
 # ────── Параметры ──────────────────────────────────────────────────────────
 DOMAIN="${CRM_DOMAIN:-crm.rutestin.com}"
-REPO_URL="${REPO_URL:-https://github.com/YOUR_USER/crm-b2b-equipment.git}"  # ← поменяй
+REPO_URL="${REPO_URL:-https://github.com/gajexara13-sys/crm-b2b-equipment.git}"
 INSTALL_DIR="/opt/crm"
 DATA_DIR="$INSTALL_DIR/data"
 LOG_DIR="/var/log/crm"

@@ -6,21 +6,14 @@
 
 ## Шаг 1. Подготовка локально
 
-1. Положи репозиторий на **GitHub** (приватный — это нормально). Если ещё нет:
-   ```bash
-   cd C:\Users\user\Documents\GitHub\crm-b2b-equipment
-   git init
-   git add .
-   git commit -m "initial commit"
-   git remote add origin https://github.com/ТВОЙ_USER/crm-b2b-equipment.git
-   git push -u origin main
-   ```
+Репозиторий уже на GitHub: https://github.com/gajexara13-sys/crm-b2b-equipment
 
-2. В файле `deploy/install.sh` замени строку:
-   ```bash
-   REPO_URL="${REPO_URL:-https://github.com/YOUR_USER/crm-b2b-equipment.git}"
-   ```
-   на свой URL.
+Если есть несинхронизированные изменения — закоммить и запушь:
+```powershell
+git add .
+git commit -m "что изменилось"
+git push
+```
 
 ---
 
@@ -69,7 +62,7 @@ ssh root@<IP-сервера>
 На сервере выполни:
 ```bash
 # Скачиваем установочный скрипт
-curl -fsSL https://raw.githubusercontent.com/ТВОЙ_USER/crm-b2b-equipment/main/deploy/install.sh -o install.sh
+curl -fsSL https://raw.githubusercontent.com/gajexara13-sys/crm-b2b-equipment/main/deploy/install.sh -o install.sh
 
 # Запускаем
 sudo CRM_DOMAIN=crm.rutestin.com bash install.sh
