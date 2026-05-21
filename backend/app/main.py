@@ -48,6 +48,16 @@ from app.models.quote_sender_profile import QuoteSenderProfile  # noqa: F401
 from app.models.quote_terms_template import QuoteTermsTemplate  # noqa: F401
 from app.models.commercial_quote import CommercialQuote, CommercialQuoteItem  # noqa: F401
 from app.models.service_category import ServiceCategory, ServiceSubcategory, ServiceItem  # noqa: F401
+# Дополнительные модели (нужны, чтобы create_all создал все таблицы и FK были валидны)
+from app.models.user import User  # noqa: F401
+from app.models.client import Client  # noqa: F401
+from app.models.request import Request  # noqa: F401
+from app.models.request_note import RequestNote  # noqa: F401
+from app.models.sample import Sample  # noqa: F401
+from app.models.test import Test  # noqa: F401
+from app.models.protocol import Protocol  # noqa: F401
+from app.models.deal_task import DealTask  # noqa: F401
+from app.models.catalog_item import CatalogItem  # noqa: F401
 
 Base.metadata.create_all(bind=engine)
 run_sqlite_migrations()
