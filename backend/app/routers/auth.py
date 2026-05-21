@@ -19,6 +19,16 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 SECRET_KEY = os.getenv("SECRET_KEY", "rutest-secret-key-2025")
 ALGORITHM = "HS256"
 
+# Предупреждение в продакшне, если SECRET_KEY не задан в окружении
+if SECRET_KEY == "rutest-secret-key-2025":
+    import sys
+    print(
+        "⚠ WARNING: SECRET_KEY использует дефолтное значение. "
+        "В продакшне обязательно задайте свой через .env!",
+        file=sys.stderr,
+        flush=True,
+    )
+
 def verify_password(plain, hashed): return pwd_context.verify(plain, hashed)
 def hash_password(password): return pwd_context.hash(password)
 def create_token(data: dict):

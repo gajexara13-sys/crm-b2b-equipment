@@ -25,6 +25,7 @@ from app.routers import (
     crm_deals,
     crm_quotes,
     uploads,
+    services_catalog,
 )
 from app.sqlite_migrate import run_sqlite_migrations
 from app.models.material_norm import MaterialNorm  # noqa: F401
@@ -46,6 +47,7 @@ from app.models.quote import Quote  # noqa: F401
 from app.models.quote_sender_profile import QuoteSenderProfile  # noqa: F401
 from app.models.quote_terms_template import QuoteTermsTemplate  # noqa: F401
 from app.models.commercial_quote import CommercialQuote, CommercialQuoteItem  # noqa: F401
+from app.models.service_category import ServiceCategory, ServiceSubcategory, ServiceItem  # noqa: F401
 
 Base.metadata.create_all(bind=engine)
 run_sqlite_migrations()
@@ -58,9 +60,15 @@ def _log_database_connection() -> None:
     """В консоли uvicorn видно, какой файл SQLite реально открыт (важно при нескольких .db)."""
     print(f"[CRM RUTEST] Database: {engine.url}", flush=True)
 
+# CORS: список разрешённых origin задаётся через CRM_ALLOWED_ORIGINS,
+# по умолчанию (в dev) — разрешаем все. В продакшне в .env прописать домен.
+import os as _os
+_allowed = _os.getenv("CRM_ALLOWED_ORIGINS", "").strip()
+_origins = [o.strip() for o in _allowed.split(",") if o.strip()] if _allowed else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,7 +89,8 @@ app.include_router(crm_companies.router, prefix="/api/crm", tags=["crm-companies
 app.include_router(crm_catalog.router, prefix="/api/crm/catalog", tags=["crm-catalog"])
 app.include_router(crm_deals.router, prefix="/api/crm/deals", tags=["crm-deals"])
 app.include_router(crm_quotes.router, prefix="/api/crm/quotes", tags=["crm-quotes"])
-app.include_router(uploads.router,    prefix="/api/uploads",    tags=["uploads"])
+app.include_router(uploads.router,          prefix="/api/uploads",          tags=["uploads"])
+app.include_router(services_catalog.router, prefix="/api/services-catalog",  tags=["services-catalog"])
 
 _UPLOADS_DIR = _Path(__file__).resolve().parent.parent / "uploads"
 _UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
