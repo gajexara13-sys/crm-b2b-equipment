@@ -77,7 +77,7 @@ sudo -u crm "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/backend/require
 
 echo "▶ Сборка фронтенда…"
 cd "$INSTALL_DIR/frontend"
-sudo -u crm npm ci
+sudo -u crm npm install --no-audit --no-fund
 sudo -u crm npm run build
 
 echo "▶ Настройка .env (если ещё не создан)…"
