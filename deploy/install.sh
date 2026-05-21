@@ -56,7 +56,9 @@ if [[ ! -d "$INSTALL_DIR/.git" ]]; then
   if [[ -d "$INSTALL_DIR" ]]; then
     rm -rf "$INSTALL_DIR"
   fi
-  mkdir -p "$(dirname "$INSTALL_DIR")"
+  # Создаём пустую папку и отдаём пользователю crm, чтобы git clone сработал
+  mkdir -p "$INSTALL_DIR"
+  chown crm:crm "$INSTALL_DIR"
   sudo -u crm git clone "$REPO_URL" "$INSTALL_DIR"
 else
   echo "  Репозиторий уже склонирован."
