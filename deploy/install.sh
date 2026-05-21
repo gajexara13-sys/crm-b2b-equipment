@@ -45,17 +45,26 @@ if ! command -v node >/dev/null 2>&1; then
   apt-get install -y nodejs
 fi
 
-echo "▶ Создание пользователя crm и каталогов…"
+echo "▶ Создание пользователя crm и каталога логов…"
 id -u crm &>/dev/null || useradd --system --create-home --shell /bin/bash crm
-mkdir -p "$INSTALL_DIR" "$DATA_DIR" "$LOG_DIR"
-chown -R crm:crm "$INSTALL_DIR" "$LOG_DIR"
+mkdir -p "$LOG_DIR"
+chown -R crm:crm "$LOG_DIR"
 
 echo "▶ Клонирование репозитория…"
 if [[ ! -d "$INSTALL_DIR/.git" ]]; then
+  # Если каталог уже существует (например, после неудачной попытки) — очищаем
+  if [[ -d "$INSTALL_DIR" ]]; then
+    rm -rf "$INSTALL_DIR"
+  fi
+  mkdir -p "$(dirname "$INSTALL_DIR")"
   sudo -u crm git clone "$REPO_URL" "$INSTALL_DIR"
 else
   echo "  Репозиторий уже склонирован."
 fi
+
+# Папка для БД создаётся после клона, чтобы не мешать git clone
+mkdir -p "$DATA_DIR"
+chown -R crm:crm "$INSTALL_DIR" "$DATA_DIR"
 
 echo "▶ Python venv + зависимости backend…"
 if [[ ! -d "$INSTALL_DIR/venv" ]]; then
