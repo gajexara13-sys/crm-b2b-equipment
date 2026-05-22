@@ -971,6 +971,44 @@ def build_quote_docxtpl(ctx: dict[str, Any]) -> bytes:
                 _parent.insert(_idx + _i, _np)
             _parent.remove(_para)
 
+        # ── Проход 3: красная строка всем обычным параграфам ────────────────
+        # Применяется только к параграфам:
+        #   - вне таблиц
+        #   - без явного центрирования (jc=center)
+        #   - без явного right-выравнивания
+        #   - которые содержат текст (не пустые)
+        # Размер красной строки: 720 двадцатых пункта (~1.27 см).
+        _INDENT_TWENTIETHS = "720"  # 1.27 см
+        for _para in _rdoc.element.iter(_P):
+            if _in_table_cell(_para):
+                continue
+            # Текст в параграфе?
+            _has_text = False
+            for _t in _para.iter(_T):
+                if (_t.text or "").strip():
+                    _has_text = True
+                    break
+            if not _has_text:
+                continue
+            # Получаем/создаём pPr
+            _pPr = _para.find(_PPR)
+            if _pPr is None:
+                _pPr = _et.SubElement(_para, _PPR)
+                _para.insert(0, _pPr)
+                _para.remove(_pPr)
+                _para.insert(0, _pPr)
+            # Пропускаем центрированные/правые
+            _jc = _pPr.find(_JC)
+            if _jc is not None and _jc.get(_VAL) in ("center", "right", "end"):
+                continue
+            # Уже задан firstLine или hanging? — не перезаписываем
+            _ind = _pPr.find(_IND)
+            if _ind is not None and (_ind.get(_FL) or _ind.get(f"{{{_W}}}hanging")):
+                continue
+            if _ind is None:
+                _ind = _et.SubElement(_pPr, _IND)
+            _ind.set(_FL, _INDENT_TWENTIETHS)
+
         buf2 = io.BytesIO()
         _rdoc.save(buf2)
         return buf2.getvalue()
