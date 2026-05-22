@@ -896,6 +896,7 @@ const STAGE_LABELS={
 }
 const EMPTY_REQ = {
   client_id: '',
+  request_kind: 'product',  // 'product' / 'service' / 'complex'
   contact_name: '',
   description: '',
   source: '',
@@ -1060,6 +1061,7 @@ function PageRequests() {
   const openEdit=r=>{
     setForm({
       client_id: r.client_id||'',
+      request_kind: r.request_kind||'product',
       contact_name: r.contact_name||'',
       description: r.material_type||'',
       source: r.source||r.test_types||'',
@@ -1077,6 +1079,7 @@ function PageRequests() {
     if(!form.client_id){alert('Выберите клиента');return}
     const payload={
       client_id: +form.client_id,
+      request_kind: form.request_kind || 'product',
       contact_name: form.contact_name||null,
       material_type: form.description||null,
       source: form.source||null,
@@ -1157,6 +1160,27 @@ function PageRequests() {
           <div style={{marginBottom:16,padding:'12px 14px',background:'var(--surface)',borderRadius:8,border:'1px solid var(--border)'}}>
             <div style={{fontSize:11,fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>Параметры сделки</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+              <div style={{gridColumn:'1 / -1'}}>
+                <label style={lbl}>Тип заявки</label>
+                <div style={{display:'flex',gap:14}}>
+                  {[
+                    {v:'product', l:'📦 Товар'},
+                    {v:'service', l:'🛠 Услуга'},
+                    {v:'complex', l:'🧩 Комплекс'},
+                  ].map(k => (
+                    <label key={k.v} style={{display:'inline-flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:13,color:'var(--text2)'}}>
+                      <input
+                        type="radio"
+                        name="request_kind"
+                        value={k.v}
+                        checked={(f.request_kind||'product')===k.v}
+                        onChange={()=>sf({request_kind:k.v})}
+                      />
+                      {k.l}
+                    </label>
+                  ))}
+                </div>
+              </div>
               <div>
                 <label style={lbl}>Количество единиц</label>
                 <input value={f.quantity} onChange={e=>sf({quantity:e.target.value})} type="number" min="1" style={inp}/>

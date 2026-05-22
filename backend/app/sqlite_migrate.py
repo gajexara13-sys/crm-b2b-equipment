@@ -42,6 +42,7 @@ def run_sqlite_migrations() -> None:
             ("selected_indicator_ids_json", "ALTER TABLE requests ADD COLUMN selected_indicator_ids_json TEXT"),
             ("contact_name", "ALTER TABLE requests ADD COLUMN contact_name TEXT"),
             ("source", "ALTER TABLE requests ADD COLUMN source TEXT"),
+            ("request_kind", "ALTER TABLE requests ADD COLUMN request_kind TEXT DEFAULT 'product'"),
         ],
     )
 

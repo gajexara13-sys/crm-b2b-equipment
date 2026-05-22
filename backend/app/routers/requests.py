@@ -21,6 +21,7 @@ router = APIRouter()
 
 class RequestIn(BaseModel):
     client_id: int
+    request_kind: str = "product"  # 'product' / 'service' / 'complex'
     contact_name: Optional[str] = None
     source: Optional[str] = None
     material_type: Optional[str] = None
@@ -139,25 +140,49 @@ def list_requests(db: Session = Depends(get_db), _=Depends(get_current_user)) ->
     return [_serialize_request_row(r, nd) for r, nd in rows]
 
 
-@router.post("")
-def create_request(data: RequestIn, db: Session = Depends(get_db), user=Depends(get_current_user)):
+_KIND_PREFIX = {"product": "Т", "service": "У", "complex": "К"}
+
+
+def _next_request_number(db: Session, kind: str) -> str:
+    """Формирует номер заявки в формате `<Т|У|К>-DDMMYY-NNN`.
+
+    Порядковый номер — сквозной по всей базе (среди заявок нового формата),
+    инкрементируется от максимального существующего.
+    """
     import re
-    y = date.today().year
-    prefix = f"ЗАЯ-{y}-"
-    # Берём максимальный существующий номер за этот год и инкрементируем
-    existing = db.query(Request).filter(Request.number.like(f"{prefix}%")).all()
+
+    prefix_letter = _KIND_PREFIX.get(kind, "Т")
+    today = date.today()
+    date_part = today.strftime("%d%m%y")
+
+    # Берём максимальный суффикс по всем заявкам нового формата (Т/У/К-DDMMYY-NNN)
+    existing = (
+        db.query(Request)
+        .filter(Request.number.op("REGEXP")("^[ТУК]-\\d{6}-\\d+$") if False else Request.number.like("_-______-%"))
+        .all()
+    )
     max_n = 0
     for r in existing:
-        m = re.search(r"(\d+)$", r.number or "")
+        m = re.match(r"^[ТУК]-\d{6}-(\d+)$", r.number or "")
         if m:
             try:
                 max_n = max(max_n, int(m.group(1)))
             except ValueError:
                 pass
+    return f"{prefix_letter}-{date_part}-{max_n + 1:03d}"
+
+
+@router.post("")
+def create_request(data: RequestIn, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    kind = (data.request_kind or "product").lower()
+    if kind not in _KIND_PREFIX:
+        kind = "product"
     payload = _request_payload_from_in(data, db)
-    # На случай редкой гонки — повторяем до 10 попыток с инкрементом
+    payload["request_kind"] = kind
+    # До 10 попыток на случай гонки/конфликта
     for attempt in range(10):
-        candidate = f"{prefix}{max_n + 1 + attempt:03d}"
+        candidate = _next_request_number(db, kind)
+        # Если уже занят — пытаемся ещё раз
         if db.query(Request).filter(Request.number == candidate).first():
             continue
         req = Request(number=candidate, **payload)

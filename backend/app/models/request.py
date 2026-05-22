@@ -7,6 +7,8 @@ class Request(Base):
     id            = Column(Integer, primary_key=True)
     client_id     = Column(Integer, ForeignKey("clients.id"))
     number        = Column(String, unique=True)
+    # Тип заявки: 'product' (товар) / 'service' (услуга) / 'complex' (комплекс)
+    request_kind  = Column(String, default="product", index=True)
     material_type = Column(String)
     test_types    = Column(Text)
     quantity      = Column(Integer, default=1)
