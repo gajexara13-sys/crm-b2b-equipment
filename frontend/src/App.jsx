@@ -113,9 +113,14 @@ const NAV_ALL = [
 ]
 const NAV_SALES = [
   {section:'CRM'},
+  {to:'/funnel',label:'Доска'},
   {to:'/today',label:'Задачи'},
-  {to:'/catalog-products',label:'Каталог товаров'},
   {to:'/quotes',label:'Коммерческие предложения'},
+  {section:'БАЗА'},
+  {to:'/catalog-products',label:'Каталог товаров'},
+  {to:'/contractors',label:'Контрагенты'},
+  {to:'/sender-profiles',label:'Профили отправителей'},
+  {to:'/contacts',label:'Контакты'},
 ]
 
 function Layout({ user, onLogout }) {
