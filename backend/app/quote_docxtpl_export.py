@@ -971,16 +971,59 @@ def build_quote_docxtpl(ctx: dict[str, Any]) -> bytes:
                 _parent.insert(_idx + _i, _np)
             _parent.remove(_para)
 
+        # ── Проход 2.5: центрируем фото и подпись под ним ───────────────────
+        # Находим параграфы с <w:drawing> и центрируем. Следующий параграф
+        # (если он есть и не пустой) — тоже центрируем (это подпись под фото).
+        _DRAWING = f"{{{_W}}}drawing"
+
+        def _set_alignment_center(para):
+            _pp = para.find(_PPR)
+            if _pp is None:
+                _pp = _et.Element(_PPR)
+                para.insert(0, _pp)
+            _jc_el = _pp.find(_JC)
+            if _jc_el is None:
+                _jc_el = _et.SubElement(_pp, _JC)
+            _jc_el.set(_VAL, "center")
+            # Если был firstLine — убираем (для фото и подписи он не нужен)
+            _ind_el = _pp.find(_IND)
+            if _ind_el is not None:
+                if _ind_el.get(_FL):
+                    del _ind_el.attrib[_FL]
+
+        _photo_paras: set = set()
+        for _para in _rdoc.element.iter(_P):
+            if any(_e.tag == _DRAWING for _e in _para.iter()):
+                _photo_paras.add(id(_para))
+                _set_alignment_center(_para)
+                # Центрируем следующий параграф (подпись), если он есть
+                _parent = _para.getparent()
+                if _parent is not None:
+                    try:
+                        _idx = list(_parent).index(_para)
+                        _next = _parent[_idx + 1] if _idx + 1 < len(_parent) else None
+                        if _next is not None and _next.tag == _P:
+                            # Только если в нём есть текст (это подпись)
+                            _has_t = any(((_t.text or "").strip()) for _t in _next.iter(_T))
+                            if _has_t:
+                                _photo_paras.add(id(_next))
+                                _set_alignment_center(_next)
+                    except (ValueError, IndexError):
+                        pass
+
         # ── Проход 3: красная строка всем обычным параграфам ────────────────
         # Применяется только к параграфам:
         #   - вне таблиц
         #   - без явного центрирования (jc=center)
         #   - без явного right-выравнивания
         #   - которые содержат текст (не пустые)
+        #   - не являются фото или подписью под фото
         # Размер красной строки: 720 двадцатых пункта (~1.27 см).
         _INDENT_TWENTIETHS = "720"  # 1.27 см
         for _para in _rdoc.element.iter(_P):
             if _in_table_cell(_para):
+                continue
+            if id(_para) in _photo_paras:
                 continue
             # Текст в параграфе?
             _has_text = False
