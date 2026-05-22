@@ -85,6 +85,33 @@ const inp = {width:'100%',padding:'10px 12px',border:'1px solid var(--inp-border
 const sel = {...inp,cursor:'pointer'}
 const lbl = {display:'block',fontSize:12,color:'var(--text3)',marginBottom:4,fontWeight:500}
 
+// Поле ввода суммы с разделителями тысяч (отображается «1 234 567» вне фокуса).
+function MoneyInput({ value, onChange, style, placeholder='0' }) {
+  const [focused, setFocused] = useState(false)
+  const [local, setLocal] = useState('')
+  const parse = v => {
+    if (v === null || v === undefined || v === '') return null
+    const n = parseFloat(String(v).replace(/[\s ]/g,'').replace(',','.'))
+    return isNaN(n) ? null : n
+  }
+  const fmtDisplay = v => {
+    const n = parse(v)
+    return n === null ? '' : n.toLocaleString('ru-RU')
+  }
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      placeholder={placeholder}
+      style={style}
+      value={focused ? local : fmtDisplay(value)}
+      onFocus={() => { setFocused(true); setLocal(value === null || value === undefined ? '' : String(value)) }}
+      onChange={e => setLocal(e.target.value.replace(/[\s ]/g,'').replace(',','.'))}
+      onBlur={() => { onChange(parse(local)); setFocused(false) }}
+    />
+  )
+}
+
 // ── кнопки в таблицах (простые outline / заливка) ───────────────────────────
 const btnT = { fontSize:12, padding:'4px 10px', borderRadius:5, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap' }
 const btnBlue   = { ...btnT, border:'1px solid #185fa5', background:'#eff6ff', color:'#0e4889' }
@@ -1187,7 +1214,7 @@ function PageRequests() {
               </div>
               <div>
                 <label style={lbl}>Предполагаемый бюджет, ₽</label>
-                <input value={f.price} onChange={e=>sf({price:e.target.value})} type="number" min="0" placeholder="0" style={inp}/>
+                <MoneyInput value={f.price} onChange={v=>sf({price: v ?? ''})} style={inp}/>
               </div>
               <div>
                 <label style={lbl}>Срочность</label>
