@@ -12,8 +12,8 @@ api.interceptors.request.use(c => {
 
 // кнопки (как в App.jsx до soft-badge)
 const btnT = { fontSize:12, padding:'5px 14px', borderRadius:6, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap' }
-const btnGreen = { ...btnT, border:'none', background:'#16a34a', color:'#fff' }
-const btnRedOutline = { ...btnT, border:'1px solid #fca5a5', background:'#fff', color:'#dc2626' }
+const btnGreen = { ...btnT, border:'none', background:'#16a34a', color:'#fff', minWidth:114, height:28, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:'0 12px' }
+const btnRedOutline = { ...btnT, border:'1px solid #fca5a5', background:'#fff', color:'#dc2626', minWidth:114, height:28, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:'0 12px' }
 const btnRedSolid = { ...btnT, border:'none', background:'#dc2626', color:'#fff' }
 const btnGray   = { ...btnT, border:'1px solid var(--border)', background:'#fff', color:'var(--text3)', fontWeight:500 }
 const btnPrimary= { padding:'9px 18px', borderRadius:8, fontSize:13, cursor:'pointer', border:'none', background:'#0f172a', color:'#fff', fontWeight:600, whiteSpace:'nowrap', alignSelf:'flex-end' }
@@ -219,7 +219,7 @@ export default function PageTasks({ user }) {
             { key: 'history', label: `История${history.length ? ` (${history.length})` : ''}` },
           ].map(t => (
             <button key={t.key} type="button" onClick={() => setTab(t.key)}
-              style={{ padding: '6px 16px', borderRadius: 7, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: tab === t.key ? '#fff' : 'transparent', color: tab === t.key ? '#0f172a' : '#64748b', boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.1)' : 'none' }}>
+              style={{ flex: 1, padding: '6px 8px', borderRadius: 7, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'center', background: tab === t.key ? '#fff' : 'transparent', color: tab === t.key ? '#0f172a' : '#64748b', boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.1)' : 'none' }}>
               {t.label}
             </button>
           ))}

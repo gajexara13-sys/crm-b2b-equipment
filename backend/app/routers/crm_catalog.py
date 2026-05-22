@@ -70,7 +70,30 @@ def _lists_to_json(data: ProductIn) -> dict:
 
 @router.get("/categories")
 def list_categories(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    """Плоский список — оставлен для обратной совместимости."""
     return db.query(ProductCategory).order_by(ProductCategory.id).all()
+
+
+@router.get("/category-tree")
+def category_tree(db: Session = Depends(get_db), _=Depends(get_current_user)):
+    """Иерархия категорий → подкатегорий (для нового UI каталога товаров)."""
+    all_cats = db.query(ProductCategory).order_by(
+        ProductCategory.sort_order, ProductCategory.id
+    ).all()
+    tops = [c for c in all_cats if c.parent_id is None]
+    out = []
+    for top in tops:
+        subs = [c for c in all_cats if c.parent_id == top.id]
+        out.append({
+            "id":   top.id,
+            "name": top.name,
+            "sort_order": top.sort_order or 0,
+            "subcategories": [
+                {"id": s.id, "name": s.name, "parent_id": top.id, "sort_order": s.sort_order or 0}
+                for s in subs
+            ],
+        })
+    return out
 
 
 @router.get("/products")

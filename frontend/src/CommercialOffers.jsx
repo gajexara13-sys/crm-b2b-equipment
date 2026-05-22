@@ -92,6 +92,8 @@ function emptyItem(overrides = {}) {
   return {
     title: '',
     product_id: null,
+    service_item_id: null,
+    item_kind: 'product',
     model: '',
     country: '',
     intro: '',
@@ -294,10 +296,11 @@ function RequestAutocomplete({ value, requestLabel, onSelect, onClear }) {
   )
 }
 
-function emptyForm() {
+function emptyForm(kind = 'product') {
   return {
     id: null,
     number: '',
+    quote_kind: kind,
     quote_date: new Date().toISOString().slice(0, 10),
     request_id: null,
     request_label: '',
@@ -485,10 +488,318 @@ function ItemDetailModal({ item, onUpdate, onClose }) {
   )
 }
 
+// ─── Авторастягивающийся textarea — высота по контенту ─────────────────────
+function AutoTextarea({ value, onChange, style }) {
+  const ref = useRef(null)
+  const resize = () => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  }
+  useEffect(() => { resize() }, [value])
+  return (
+    <textarea
+      ref={ref}
+      value={value || ''}
+      onChange={e => { onChange(e.target.value); resize() }}
+      style={{ ...style, overflow: 'hidden', resize: 'none' }}
+      rows={1}
+    />
+  )
+}
+
+// ─── Поле ввода цены с форматированием до 2 знаков + разделители тысяч ────
+function PriceInput({ value, onChange, style }) {
+  const [focused, setFocused] = useState(false)
+  const [local, setLocal] = useState('')
+
+  // Парсинг: убираем пробелы (вкл. неразрывный) и приводим запятую к точке
+  const parse = v => parseFloat(String(v).replace(/[\s ]/g, '').replace(',', '.'))
+
+  // Формат с разделителями для режима «не в фокусе»: 1 234 567,89
+  const fmtDisplay = v => {
+    const n = parse(v)
+    if (isNaN(n)) return '0,00'
+    return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
+
+  // Формат для режима редактирования: без разделителей, точка как разделитель дробной части
+  const fmtEdit = v => {
+    const n = parse(v)
+    return isNaN(n) ? '' : n.toFixed(2)
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      style={style}
+      value={focused ? local : fmtDisplay(value)}
+      onFocus={() => { setFocused(true); setLocal(fmtEdit(value)) }}
+      onChange={e => setLocal(e.target.value.replace(/[\s ]/g, '').replace(',', '.'))}
+      onBlur={() => {
+        const v = parse(local) || 0
+        onChange(v)
+        setFocused(false)
+      }}
+    />
+  )
+}
+
+// ─── Иерархический выбор товаров из каталога (мгновенное добавление) ──────
+function CatalogPicker({ catTree, products, pickedIds, onAdd, onRemove }) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [openCats, setOpenCats] = useState(new Set())
+  const [openSubs, setOpenSubs] = useState(new Set())
+  const wrapRef = useRef(null)
+
+  useEffect(() => {
+    const handler = e => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const toggleCat = id => setOpenCats(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const toggleSub = id => setOpenSubs(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+
+  const q = search.toLowerCase()
+  const matchesQuery = p => !q || p.name.toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q)
+
+  // Мгновенное добавление/удаление товара
+  const toggleProd = p => {
+    if (pickedIds.has(p.id)) onRemove(p.id)
+    else onAdd(p.id)
+  }
+
+  // Стиль чекбокса (виден в обеих темах)
+  const checkboxStyle = (checked) => ({
+    width: 16, height: 16, borderRadius: 3,
+    border: '1.5px solid ' + (checked ? '#185fa5' : '#94a3b8'),
+    background: checked ? '#185fa5' : 'transparent',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0, transition: 'all .12s',
+  })
+  const checkMark = (checked) => checked ? (
+    <span style={{ color: '#fff', fontSize: 12, lineHeight: 1, fontWeight: 700 }}>✓</span>
+  ) : null
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', maxWidth: 520, marginBottom: 10 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--inp-border)', borderRadius: 6, background: 'var(--inp-bg)', color: 'var(--text)', fontSize: 14, textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+      >
+        <span>+ Добавить товар из каталога{pickedIds.size > 0 ? ` (в КП: ${pickedIds.size})` : ''}</span>
+        <span style={{ color: 'var(--text3)', fontSize: 12 }}>▾</span>
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 600, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.25)', marginTop: 4, maxHeight: 500, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border2)', flexShrink: 0 }}>
+            <input
+              autoFocus
+              style={{ width: '100%', padding: '6px 10px', border: '1px solid var(--inp-border)', borderRadius: 5, background: 'var(--inp-bg)', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box', outline: 'none' }}
+              placeholder="Поиск по названию или артикулу…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {catTree.map(cat => {
+              const subcats = cat.subcategories || []
+              const allSubIds = new Set(subcats.map(s => s.id))
+              const catMatchProds = q
+                ? products.filter(p => allSubIds.has(p.category_id) && matchesQuery(p))
+                : []
+              if (q && catMatchProds.length === 0) return null
+              const expanded = q || openCats.has(cat.id)
+              return (
+                <div key={cat.id}>
+                  <div
+                    onClick={() => toggleCat(cat.id)}
+                    style={{ padding: '7px 12px', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 7, background: 'var(--bg2)', borderBottom: '1px solid var(--border2)', userSelect: 'none' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2, #e8edf4)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg2)'}
+                  >
+                    <span style={{ fontSize: 9, color: 'var(--text4)', width: 10, flexShrink: 0 }}>{expanded ? '▼' : '▶'}</span>
+                    {cat.name}
+                  </div>
+                  {expanded && subcats.map(sub => {
+                    const subProds = products.filter(p => p.category_id === sub.id && matchesQuery(p))
+                    if (subProds.length === 0) return null
+                    const subExpanded = q || openSubs.has(sub.id)
+                    return (
+                      <div key={sub.id}>
+                        <div
+                          onClick={() => toggleSub(sub.id)}
+                          style={{ padding: '6px 12px 6px 26px', cursor: 'pointer', fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--border2)', userSelect: 'none' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2, #e8edf4)'}
+                          onMouseLeave={e => e.currentTarget.style.background = ''}
+                        >
+                          <span style={{ fontSize: 9, color: 'var(--text4)', width: 10, flexShrink: 0 }}>{subExpanded ? '▼' : '▶'}</span>
+                          {sub.name}
+                          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text4)', background: 'var(--bg2)', padding: '1px 7px', borderRadius: 10, flexShrink: 0 }}>{subProds.length}</span>
+                        </div>
+                        {subExpanded && subProds.map(p => {
+                          const checked = pickedIds.has(p.id)
+                          return (
+                            <div
+                              key={p.id}
+                              onClick={() => toggleProd(p)}
+                              style={{ padding: '5px 12px 5px 44px', cursor: 'pointer', fontSize: 12, color: 'var(--text)', borderBottom: '1px solid var(--border2)', display: 'flex', gap: 8, alignItems: 'center', background: checked ? 'rgba(24,95,165,0.08)' : 'transparent' }}
+                              onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#eff6ff' }}
+                              onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent' }}
+                            >
+                              <span style={checkboxStyle(checked)}>{checkMark(checked)}</span>
+                              <span style={{ flex: 1 }}>{p.name}</span>
+                              {p.sku && <span style={{ color: 'var(--text4)', fontSize: 11, flexShrink: 0 }}>{p.sku}</span>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ padding: '7px 12px', borderTop: '1px solid var(--border2)', fontSize: 11, color: 'var(--text3)', background: 'var(--bg2)', flexShrink: 0 }}>
+            Кликните по товару, чтобы добавить или убрать его из КП
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Иерархический выбор услуг из каталога (мгновенное добавление) ────────
+function ServicePicker({ serviceTree, serviceItems, pickedIds, onAdd, onRemove }) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [openCats, setOpenCats] = useState(new Set())
+  const [openSubs, setOpenSubs] = useState(new Set())
+  const wrapRef = useRef(null)
+
+  useEffect(() => {
+    const handler = e => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const toggleCat = id => setOpenCats(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const toggleSub = id => setOpenSubs(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+
+  const q = search.toLowerCase()
+  const matchesQuery = it => !q || (it.name || '').toLowerCase().includes(q) || (it.description || '').toLowerCase().includes(q)
+
+  const toggleItem = it => {
+    if (pickedIds.has(it.id)) onRemove(it.id)
+    else onAdd(it.id)
+  }
+
+  const checkboxStyle = (checked) => ({
+    width: 16, height: 16, borderRadius: 3,
+    border: '1.5px solid ' + (checked ? '#185fa5' : '#94a3b8'),
+    background: checked ? '#185fa5' : 'transparent',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0, transition: 'all .12s',
+  })
+  const checkMark = (checked) => checked ? (
+    <span style={{ color: '#fff', fontSize: 12, lineHeight: 1, fontWeight: 700 }}>✓</span>
+  ) : null
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', maxWidth: 520, marginBottom: 10 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--inp-border)', borderRadius: 6, background: 'var(--inp-bg)', color: 'var(--text)', fontSize: 14, textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+      >
+        <span>+ Добавить услугу из каталога{pickedIds.size > 0 ? ` (в КП: ${pickedIds.size})` : ''}</span>
+        <span style={{ color: 'var(--text3)', fontSize: 12 }}>▾</span>
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 600, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,.25)', marginTop: 4, maxHeight: 500, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border2)', flexShrink: 0 }}>
+            <input
+              autoFocus
+              style={{ width: '100%', padding: '6px 10px', border: '1px solid var(--inp-border)', borderRadius: 5, background: 'var(--inp-bg)', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box', outline: 'none' }}
+              placeholder="Поиск по названию или описанию…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {serviceTree.map(cat => {
+              const subcats = cat.subcategories || []
+              const allSubIds = new Set(subcats.map(s => s.id))
+              const catMatchItems = q
+                ? serviceItems.filter(it => allSubIds.has(it.subcategory_id) && matchesQuery(it))
+                : []
+              if (q && catMatchItems.length === 0) return null
+              const expanded = q || openCats.has(cat.id)
+              return (
+                <div key={cat.id}>
+                  <div
+                    onClick={() => toggleCat(cat.id)}
+                    style={{ padding: '7px 12px', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 7, background: 'var(--bg2)', borderBottom: '1px solid var(--border2)', userSelect: 'none' }}
+                  >
+                    <span style={{ fontSize: 9, color: 'var(--text4)', width: 10, flexShrink: 0 }}>{expanded ? '▼' : '▶'}</span>
+                    {cat.name}
+                  </div>
+                  {expanded && subcats.map(sub => {
+                    const subItems = serviceItems.filter(it => it.subcategory_id === sub.id && matchesQuery(it))
+                    if (subItems.length === 0) return null
+                    const subExpanded = q || openSubs.has(sub.id)
+                    return (
+                      <div key={sub.id}>
+                        <div
+                          onClick={() => toggleSub(sub.id)}
+                          style={{ padding: '6px 12px 6px 26px', cursor: 'pointer', fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--border2)', userSelect: 'none' }}
+                        >
+                          <span style={{ fontSize: 9, color: 'var(--text4)', width: 10, flexShrink: 0 }}>{subExpanded ? '▼' : '▶'}</span>
+                          {sub.name}
+                          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text4)', background: 'var(--bg2)', padding: '1px 7px', borderRadius: 10, flexShrink: 0 }}>{subItems.length}</span>
+                        </div>
+                        {subExpanded && subItems.map(it => {
+                          const checked = pickedIds.has(it.id)
+                          return (
+                            <div
+                              key={it.id}
+                              onClick={() => toggleItem(it)}
+                              style={{ padding: '5px 12px 5px 44px', cursor: 'pointer', fontSize: 12, color: 'var(--text)', borderBottom: '1px solid var(--border2)', display: 'flex', gap: 8, alignItems: 'center', background: checked ? 'rgba(24,95,165,0.08)' : 'transparent' }}
+                              onMouseEnter={e => { if (!checked) e.currentTarget.style.background = '#eff6ff' }}
+                              onMouseLeave={e => { if (!checked) e.currentTarget.style.background = 'transparent' }}
+                            >
+                              <span style={checkboxStyle(checked)}>{checkMark(checked)}</span>
+                              <span style={{ flex: 1 }}>{it.name}</span>
+                              {it.price_rub != null && <span style={{ color: 'var(--text4)', fontSize: 11, flexShrink: 0 }}>{Number(it.price_rub).toLocaleString('ru-RU')} ₽</span>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ padding: '7px 12px', borderTop: '1px solid var(--border2)', fontSize: 11, color: 'var(--text3)', background: 'var(--bg2)', flexShrink: 0 }}>
+            Кликните по услуге, чтобы добавить или убрать её из КП
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Основной компонент ──────────────────────────────────────────────────────
 export default function CommercialOffers() {
   const [rows, setRows] = useState([])
   const [products, setProducts] = useState([])
+  const [catTree, setCatTree] = useState([])
   const [companies, setCompanies] = useState([])
   const [senders, setSenders] = useState([])
   const [form, setForm] = useState(emptyForm())
@@ -497,20 +808,45 @@ export default function CommercialOffers() {
   const [err, setErr] = useState('')
   const [detailIdx, setDetailIdx] = useState(null)
 
+  // Вкладки: 'all' / 'product' / 'service' / 'mixed'
+  const [tab, setTab] = useState('all')
+
+  // Услуги: дерево + плоский список позиций
+  const [serviceTree, setServiceTree]   = useState([])
+  const [serviceItems, setServiceItems] = useState([])
+
   const load = useCallback(async () => {
     setErr('')
     setLoading(true)
     try {
-      const [q, p, c, s] = await Promise.all([
+      const [q, p, tree, c, s, svcCats] = await Promise.all([
         api.get('/crm/quotes'),
         api.get('/crm/catalog/products'),
+        api.get('/crm/catalog/category-tree'),
         api.get('/crm/companies'),
         api.get('/crm/quotes/sender-profiles'),
+        api.get('/services-catalog/categories'),
       ])
       setRows(q.data || [])
       setProducts(p.data || [])
+      setCatTree(tree.data || [])
       setCompanies(c.data || [])
       setSenders(s.data || [])
+
+      // Грузим позиции каждой подкатегории услуг
+      const cats = svcCats.data || []
+      setServiceTree(cats)
+      const subIds = []
+      for (const cat of cats) for (const sub of (cat.subcategories || [])) subIds.push(sub.id)
+      const itemsArrays = await Promise.all(
+        subIds.map(sid => api.get(`/services-catalog/subcategories/${sid}/items`).then(r => r.data || []).catch(() => []))
+      )
+      const allItems = []
+      itemsArrays.forEach((arr, idx) => {
+        const sid = subIds[idx]
+        for (const it of arr) allItems.push({ ...it, subcategory_id: sid })
+      })
+      setServiceItems(allItems)
     } catch (e) {
       setErr(e.response?.data?.detail || e.message || 'Ошибка загрузки КП')
     } finally {
@@ -540,7 +876,9 @@ export default function CommercialOffers() {
   }, [form.items])
 
   const openNew = () => {
-    setForm(emptyForm())
+    // На вкладке "Все" по умолчанию — товары; иначе совпадает с вкладкой
+    const kind = (tab === 'all') ? 'product' : tab
+    setForm(emptyForm(kind))
     setOpen(true)
   }
 
@@ -548,6 +886,7 @@ export default function CommercialOffers() {
     setForm({
       id: q.id,
       number: q.number || '',
+      quote_kind: q.quote_kind || 'product',
       quote_date: q.quote_date || new Date().toISOString().slice(0, 10),
       request_id: q.request_id || null,
       request_label: q.request_id
@@ -584,6 +923,44 @@ export default function CommercialOffers() {
     setOpen(true)
   }
 
+  // Set product_id уже добавленных в КП — для отображения галочек в каталоге
+  const pickedProductIds = useMemo(
+    () => new Set((form.items || []).map(i => i.product_id).filter(Boolean)),
+    [form.items]
+  )
+  // Set service_item_id уже добавленных в КП
+  const pickedServiceIds = useMemo(
+    () => new Set((form.items || []).map(i => i.service_item_id).filter(Boolean)),
+    [form.items]
+  )
+
+  // Добавление услуги в КП
+  const addService = id => {
+    const s = serviceItems.find(x => Number(x.id) === Number(id))
+    if (!s) return
+    setForm(f => ({
+      ...f,
+      items: [
+        ...f.items,
+        emptyItem({
+          title: s.name,
+          service_item_id: s.id,
+          item_kind: 'service',
+          model: s.unit || '',
+          intro: s.description || '',
+          features_text: s.notes || '',
+          kit_text: s.duration ? `Срок выполнения: ${s.duration}` : '',
+          price_without_vat: Number(s.price_rub || 0),
+          price_with_vat: Number(s.price_rub || 0),
+        }),
+      ],
+    }))
+  }
+
+  const removeServiceById = sid => {
+    setForm(f => ({ ...f, items: f.items.filter(i => Number(i.service_item_id) !== Number(sid)) }))
+  }
+
   // При добавлении товара из каталога — авто-заполняем rich-поля из карточки товара
   const addProduct = id => {
     const p = products.find(x => Number(x.id) === Number(id))
@@ -598,6 +975,7 @@ export default function CommercialOffers() {
         emptyItem({
           title: p.name,
           product_id: p.id,
+          item_kind: 'product',
           model: p.sku || '',
           intro: p.description || '',
           specs: (() => { try { const r = JSON.parse(p.tech_specs || ''); if (Array.isArray(r)) return r.map(x => ({ param: x.key || '', value: x.value || '' })) } catch (_) {} return [] })(),
@@ -610,6 +988,11 @@ export default function CommercialOffers() {
     }))
   }
 
+  // Убрать товар из КП по product_id (вызывается из CatalogPicker при снятии галочки)
+  const removeProductById = pid => {
+    setForm(f => ({ ...f, items: f.items.filter(i => Number(i.product_id) !== Number(pid)) }))
+  }
+
   const updateItem = useCallback((idx, patch) => {
     setForm(f => ({ ...f, items: f.items.map((x, i) => i === idx ? { ...x, ...patch } : x) }))
   }, [])
@@ -618,6 +1001,7 @@ export default function CommercialOffers() {
     try {
       const payload = {
         number: form.number || null,
+        quote_kind: form.quote_kind || 'product',
         quote_date: form.quote_date,
         request_id: form.request_id || null,
         sender_profile_id: form.sender_profile_id ? Number(form.sender_profile_id) : null,
@@ -640,6 +1024,8 @@ export default function CommercialOffers() {
           sort_order: idx,
           title: i.title,
           product_id: i.product_id || null,
+          service_item_id: i.service_item_id || null,
+          item_kind: i.item_kind || (i.service_item_id ? 'service' : 'product'),
           model: i.model || null,
           country: i.country || null,
           intro: i.intro || null,
@@ -717,13 +1103,46 @@ export default function CommercialOffers() {
     <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '1.25rem', boxShadow: 'var(--shadow)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>Коммерческие предложения</h2>
-        <button type="button" onClick={openNew} style={{ padding: '10px 18px', border: 'none', borderRadius: 6, background: 'var(--primary)', color: '#fff', fontWeight: 500, cursor: 'pointer' }}>Создать КП</button>
+        <button type="button" onClick={openNew} style={{ padding: '10px 18px', border: 'none', borderRadius: 6, background: 'var(--primary)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+          Создать КП{tab !== 'all' ? (tab === 'product' ? ' на товары' : tab === 'service' ? ' на услуги' : ' смешанное') : ''}
+        </button>
       </div>
+
+      {/* Вкладки по типам КП */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 12, borderBottom: '1px solid var(--border)' }}>
+        {[
+          { key: 'all',     label: 'Все' },
+          { key: 'product', label: 'Товары' },
+          { key: 'service', label: 'Услуги' },
+          { key: 'mixed',   label: 'Смешанные' },
+        ].map(t => {
+          const cnt = t.key === 'all' ? rows.length : rows.filter(r => (r.quote_kind || 'product') === t.key).length
+          const active = tab === t.key
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              style={{
+                padding: '8px 16px', border: 'none', background: 'transparent',
+                color: active ? 'var(--primary)' : 'var(--text3)',
+                fontWeight: active ? 700 : 500, fontSize: 13, cursor: 'pointer',
+                borderBottom: '2px solid ' + (active ? 'var(--primary)' : 'transparent'),
+                marginBottom: -1,
+              }}
+            >
+              {t.label} <span style={{ fontSize: 11, color: 'var(--text4)', marginLeft: 4 }}>({cnt})</span>
+            </button>
+          )
+        })}
+      </div>
+
       {err && <div style={{ background:'rgba(239,68,68,0.12)', color: '#991b1b', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{err}</div>}
       {loading ? <p style={{ color: 'var(--text3)' }}>Загрузка…</p> : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead><tr>
             <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '2px solid var(--border)', color: 'var(--text4)' }}>№</th>
+            <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '2px solid var(--border)', color: 'var(--text4)' }}>Тип</th>
             <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '2px solid var(--border)', color: 'var(--text4)' }}>Заявка</th>
             <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '2px solid var(--border)', color: 'var(--text4)' }}>Дата</th>
             <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '2px solid var(--border)', color: 'var(--text4)' }}>Получатель</th>
@@ -732,9 +1151,21 @@ export default function CommercialOffers() {
             <th style={{ textAlign: 'right', padding: '8px 10px', borderBottom: '2px solid var(--border)' }}></th>
           </tr></thead>
           <tbody>
-            {rows.map(r => (
+            {rows.filter(r => tab === 'all' || (r.quote_kind || 'product') === tab).map(r => (
               <tr key={r.id} style={{ borderBottom: '1px solid var(--border2)' }}>
                 <td style={{ padding: '10px', color: 'var(--text)' }}>{r.number || `КП-${r.id}`}</td>
+                <td style={{ padding: '10px' }}>
+                  {(() => {
+                    const k = r.quote_kind || 'product'
+                    const map = {
+                      product: { label: 'Товары',     bg: 'rgba(24,95,165,0.12)',  color: '#185fa5' },
+                      service: { label: 'Услуги',     bg: 'rgba(22,163,74,0.12)',  color: '#15803d' },
+                      mixed:   { label: 'Смешанное',  bg: 'rgba(168,85,247,0.12)', color: '#7e22ce' },
+                    }
+                    const cfg = map[k] || map.product
+                    return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
+                  })()}
+                </td>
                 <td style={{ padding: '10px', color: 'var(--text2)', fontSize: 12 }}>
                   {r.request_number
                     ? <span style={{ background: 'var(--bg2)', padding: '2px 7px', borderRadius: 4, color: 'var(--primary)', fontWeight: 500 }}>{r.request_number}</span>
@@ -752,22 +1183,16 @@ export default function CommercialOffers() {
                       onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
                       <IconDocx size={34} />
                     </button>
-                    <button type="button" onClick={() => downloadExport('pdf', r.id, r.number || `KP-${r.id}`)} title="Скачать PDF"
-                      style={{ padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', borderRadius: 4, lineHeight: 0, opacity: 1, transition: 'opacity 0.15s' }}
-                      onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
-                      onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-                      <IconPdf size={34} />
-                    </button>
                     <button type="button" onClick={() => openEdit(r)}
-                      style={{ padding: '6px 12px', fontSize: 12, fontWeight: 500, border: '1px solid #185fa5', borderRadius: 5, background: '#eff6ff', color: '#185fa5', cursor: 'pointer' }}>
+                      style={{ minWidth: 78, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, border: '1px solid #185fa5', borderRadius: 5, background: '#eff6ff', color: '#0e4889', cursor: 'pointer' }}>
                       Изменить
                     </button>
                     <button type="button" onClick={() => duplicate(r.id)}
-                      style={{ padding: '6px 12px', fontSize: 12, fontWeight: 500, border: '1px solid #94a3b8', borderRadius: 5, background: '#f8fafc', color: '#64748b', cursor: 'pointer' }}>
+                      style={{ minWidth: 78, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, border: '1px solid #94a3b8', borderRadius: 5, background: '#f8fafc', color: '#64748b', cursor: 'pointer' }}>
                       Дубль
                     </button>
                     <button type="button" onClick={() => remove(r.id)}
-                      style={{ padding: '6px 12px', fontSize: 12, fontWeight: 500, border: '1px solid #fecaca', borderRadius: 5, background: '#fff5f5', color: '#dc2626', cursor: 'pointer' }}>
+                      style={{ minWidth: 78, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, border: '1px solid #fecaca', borderRadius: 5, background: '#fff5f5', color: '#dc2626', cursor: 'pointer' }}>
                       Удалить
                     </button>
                   </div>
@@ -970,44 +1395,81 @@ export default function CommercialOffers() {
             </div>
 
             {/* Позиции */}
-            <div style={{ fontSize: 13, fontWeight: 600, margin: '4px 0 8px', color: 'var(--text)' }}>Позиции КП</div>
-            <div style={{ marginBottom: 10 }}>
-              <select style={{ ...inp, marginBottom: 0, maxWidth: 400 }} defaultValue="" onChange={e => { addProduct(e.target.value); e.target.value = '' }}>
-                <option value="">+ Добавить товар из каталога</option>
-                {products.map(p => <option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ''}</option>)}
-              </select>
+            {/* Тип КП — переключатель сверху позиций */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '6px 0 10px' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Тип КП:</span>
+              {[
+                { key: 'product', label: 'Товары' },
+                { key: 'service', label: 'Услуги' },
+                { key: 'mixed',   label: 'Смешанное' },
+              ].map(k => (
+                <label key={k.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 13, color: 'var(--text2)' }}>
+                  <input
+                    type="radio"
+                    name="quote_kind"
+                    checked={form.quote_kind === k.key}
+                    onChange={() => setForm(f => ({ ...f, quote_kind: k.key }))}
+                  />
+                  {k.label}
+                </label>
+              ))}
             </div>
 
+            <div style={{ fontSize: 13, fontWeight: 600, margin: '4px 0 8px', color: 'var(--text)' }}>Позиции КП</div>
+            {(form.quote_kind === 'product' || form.quote_kind === 'mixed') && (
+              <CatalogPicker
+                catTree={catTree}
+                products={products}
+                pickedIds={pickedProductIds}
+                onAdd={addProduct}
+                onRemove={removeProductById}
+              />
+            )}
+            {(form.quote_kind === 'service' || form.quote_kind === 'mixed') && (
+              <ServicePicker
+                serviceTree={serviceTree}
+                serviceItems={serviceItems}
+                pickedIds={pickedServiceIds}
+                onAdd={addService}
+                onRemove={removeServiceById}
+              />
+            )}
+
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 10 }}>
+              <colgroup>
+                <col style={{ width: '36%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '110px' }} />
+                <col style={{ width: '60px' }} />
+                <col style={{ width: '70px' }} />
+                <col style={{ width: '95px' }} />
+                <col style={{ width: '110px' }} />
+              </colgroup>
               <thead><tr style={{ borderBottom: '2px solid var(--border)' }}>
                 <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text3)', fontWeight: 500 }}>Наименование</th>
                 <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--text3)', fontWeight: 500 }}>Модель</th>
-                <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--text3)', fontWeight: 500 }}>Цена с НДС</th>
-                <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--text3)', fontWeight: 500 }}>Кол-во</th>
-                <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--text3)', fontWeight: 500 }}>Скидка %</th>
-                <th style={{ textAlign: 'right', padding: '6px 8px', color: 'var(--text3)', fontWeight: 500 }}>Скидка сумма</th>
+                <th style={{ textAlign: 'right', padding: '6px 4px', color: 'var(--text3)', fontWeight: 500 }}>Цена с НДС</th>
+                <th style={{ textAlign: 'right', padding: '6px 4px', color: 'var(--text3)', fontWeight: 500 }}>Кол-во</th>
+                <th style={{ textAlign: 'right', padding: '6px 4px', color: 'var(--text3)', fontWeight: 500 }}>Скидка %</th>
+                <th style={{ textAlign: 'right', padding: '6px 4px', color: 'var(--text3)', fontWeight: 500 }}>Скидка сумма</th>
                 <th></th>
               </tr></thead>
               <tbody>
                 {form.items.map((it, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid var(--border2)' }}>
-                    <td style={{ padding: '6px 4px' }}>
-                      <input style={{ ...inp, marginBottom: 2 }} value={it.title || ''} onChange={e => updateItem(idx, { title: e.target.value })} />
-                      {/* Индикаторы заполненности rich-полей */}
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        {it.intro && <span style={{ fontSize: 10, padding: '1px 5px', background: '#dbeafe', color: '#1d4ed8', borderRadius: 3 }}>описание</span>}
-                        {it.features_text && <span style={{ fontSize: 10, padding: '1px 5px', background: '#dcfce7', color: '#15803d', borderRadius: 3 }}>особенности</span>}
-                        {it.kit_text && <span style={{ fontSize: 10, padding: '1px 5px', background: '#fef9c3', color: '#854d0e', borderRadius: 3 }}>комплект</span>}
-                        {(it.specs || []).length > 0 && <span style={{ fontSize: 10, padding: '1px 5px', background: '#f3e8ff', color: '#7e22ce', borderRadius: 3 }}>{it.specs.length} хар-к</span>}
-                        {(it.photo_urls || []).length > 0 && <span style={{ fontSize: 10, padding: '1px 5px', background: '#ffedd5', color: '#9a3412', borderRadius: 3 }}>{it.photo_urls.length} фото</span>}
-                      </div>
+                    <td style={{ padding: '6px 4px', verticalAlign: 'top' }}>
+                      <AutoTextarea
+                        value={it.title}
+                        onChange={v => updateItem(idx, { title: v })}
+                        style={{ ...inp, marginBottom: 0, fontSize: 12, lineHeight: 1.35 }}
+                      />
                     </td>
-                    <td style={{ padding: '6px 4px' }}><input style={{ ...inp, marginBottom: 0 }} value={it.model || ''} onChange={e => updateItem(idx, { model: e.target.value })} /></td>
-                    <td style={{ padding: '6px 4px' }}><input type="number" style={{ ...inp, marginBottom: 0 }} value={it.price_with_vat} onChange={e => updateItem(idx, { price_with_vat: e.target.value })} /></td>
-                    <td style={{ padding: '6px 4px' }}><input type="number" style={{ ...inp, marginBottom: 0 }} value={it.quantity} onChange={e => updateItem(idx, { quantity: e.target.value })} /></td>
-                    <td style={{ padding: '6px 4px' }}><input type="number" style={{ ...inp, marginBottom: 0 }} value={it.discount_pct || 0} onChange={e => updateItem(idx, { discount_pct: e.target.value })} /></td>
-                    <td style={{ padding: '6px 4px' }}><input type="number" style={{ ...inp, marginBottom: 0 }} value={it.discount_amount || 0} onChange={e => updateItem(idx, { discount_amount: e.target.value })} /></td>
-                    <td style={{ padding: '6px 4px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '6px 4px', verticalAlign: 'top' }}><input style={{ ...inp, marginBottom: 0, fontSize: 12 }} value={it.model || ''} onChange={e => updateItem(idx, { model: e.target.value })} /></td>
+                    <td style={{ padding: '6px 4px', verticalAlign: 'top' }}><PriceInput style={{ ...inp, marginBottom: 0, fontSize: 12, textAlign: 'right' }} value={it.price_with_vat} onChange={v => updateItem(idx, { price_with_vat: v })} /></td>
+                    <td style={{ padding: '6px 4px', verticalAlign: 'top' }}><input type="number" style={{ ...inp, marginBottom: 0, fontSize: 12, textAlign: 'right', padding: '8px 4px' }} value={it.quantity} onChange={e => updateItem(idx, { quantity: e.target.value })} /></td>
+                    <td style={{ padding: '6px 4px', verticalAlign: 'top' }}><input type="number" style={{ ...inp, marginBottom: 0, fontSize: 12, textAlign: 'right', padding: '8px 4px' }} value={it.discount_pct || 0} onChange={e => updateItem(idx, { discount_pct: e.target.value })} /></td>
+                    <td style={{ padding: '6px 4px', verticalAlign: 'top' }}><input type="number" style={{ ...inp, marginBottom: 0, fontSize: 12, textAlign: 'right', padding: '8px 4px' }} value={it.discount_amount || 0} onChange={e => updateItem(idx, { discount_amount: e.target.value })} /></td>
+                    <td style={{ padding: '6px 4px', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
                       <button
                         type="button"
                         onClick={() => setDetailIdx(idx)}
@@ -1023,8 +1485,8 @@ export default function CommercialOffers() {
             </table>
 
             <div style={{ textAlign: 'right', marginBottom: 12, color: 'var(--text2)' }}>
-              <div>Сумма: <b>{subtotal.toLocaleString('ru-RU')}</b></div>
-              <div>Итого со скидкой: <b>{total.toLocaleString('ru-RU')}</b></div>
+              <div>Сумма: <b>{subtotal.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></div>
+              <div>Итого со скидкой: <b>{total.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></div>
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button type="button" onClick={() => setOpen(false)}
@@ -1036,10 +1498,6 @@ export default function CommercialOffers() {
                   <button type="button" onClick={() => downloadExport('docx', form.id, form.number || `KP-${form.id}`)}
                     style={{ padding: '9px 16px', fontSize: 13, fontWeight: 600, border: '1.5px solid var(--primary)', borderRadius: 6, background: 'transparent', color: 'var(--primary)', cursor: 'pointer', letterSpacing: '0.03em' }}>
                     Скачать DOCX
-                  </button>
-                  <button type="button" onClick={() => downloadExport('pdf', form.id, form.number || `KP-${form.id}`)}
-                    style={{ padding: '9px 16px', fontSize: 13, fontWeight: 600, border: '1.5px solid var(--primary)', borderRadius: 6, background: 'transparent', color: 'var(--primary)', cursor: 'pointer', letterSpacing: '0.03em' }}>
-                    Скачать PDF
                   </button>
                 </>
               ) : null}

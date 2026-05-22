@@ -10,6 +10,8 @@ class CommercialQuote(Base):
     id = Column(Integer, primary_key=True)
     number = Column(String, unique=True, index=True)
     status = Column(String, default="draft")
+    # Тип КП: 'product' — только товары, 'service' — только услуги, 'mixed' — оба
+    quote_kind = Column(String, default="product", index=True)
     quote_date = Column(Date)
     deal_id = Column(Integer, ForeignKey("deals.id"), nullable=True, index=True)
 
@@ -56,6 +58,10 @@ class CommercialQuoteItem(Base):
     id = Column(Integer, primary_key=True)
     quote_id = Column(Integer, ForeignKey("commercial_quotes.id"), nullable=False, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
+    # Если позиция — услуга: ссылка на каталог услуг (service_items.id)
+    service_item_id = Column(Integer, nullable=True, index=True)
+    # Тип строки в смешанной КП: 'product' / 'service'
+    item_kind = Column(String, default="product")
 
     sort_order = Column(Integer, default=0)
     title = Column(String, nullable=False)

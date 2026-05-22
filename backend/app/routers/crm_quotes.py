@@ -49,6 +49,8 @@ def _quote_to_json(q: CommercialQuote, db: Session) -> dict:
             {
                 "id": it.id,
                 "product_id": it.product_id,
+                "service_item_id": it.service_item_id,
+                "item_kind": it.item_kind or ("service" if it.service_item_id else "product"),
                 "sort_order": it.sort_order,
                 "title": it.title,
                 "model": it.model,
@@ -81,6 +83,7 @@ def _quote_to_json(q: CommercialQuote, db: Session) -> dict:
         "id": q.id,
         "number": q.number,
         "status": q.status,
+        "quote_kind": q.quote_kind or "product",
         "quote_date": q.quote_date,
         "deal_id": q.deal_id,
         "request_id": q.request_id,
@@ -193,6 +196,8 @@ def _export_ctx(q: CommercialQuote, db: Session) -> dict:
 
 class QuoteItemIn(BaseModel):
     product_id: Optional[int] = None
+    service_item_id: Optional[int] = None
+    item_kind: str = "product"
     sort_order: int = 0
     title: str
     model: Optional[str] = None
@@ -218,6 +223,7 @@ class QuoteItemIn(BaseModel):
 class QuoteIn(BaseModel):
     number: Optional[str] = None
     status: str = "draft"
+    quote_kind: str = "product"
     quote_date: Optional[date] = None
     deal_id: Optional[int] = None
     request_id: Optional[int] = None
@@ -439,6 +445,7 @@ def list_quotes(
     recipient_company_id: Optional[int] = None,
     status: Optional[str] = None,
     request_id: Optional[int] = None,
+    quote_kind: Optional[str] = None,
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -449,6 +456,8 @@ def list_quotes(
         q = q.filter(CommercialQuote.status == status)
     if request_id is not None:
         q = q.filter(CommercialQuote.request_id == request_id)
+    if quote_kind:
+        q = q.filter(CommercialQuote.quote_kind == quote_kind)
     rows = q.order_by(CommercialQuote.created_at.desc()).all()
     return [_quote_to_json(r, db) for r in rows]
 
@@ -541,6 +550,7 @@ def create_quote(data: QuoteIn, db: Session = Depends(get_db), _=Depends(get_cur
     q = CommercialQuote(
         number=data.number,
         status=data.status,
+        quote_kind=data.quote_kind or "product",
         quote_date=data.quote_date or date.today(),
         deal_id=data.deal_id,
         request_id=data.request_id,
@@ -585,6 +595,8 @@ def create_quote(data: QuoteIn, db: Session = Depends(get_db), _=Depends(get_cur
             CommercialQuoteItem(
                 quote_id=q.id,
                 product_id=i.product_id,
+                service_item_id=i.service_item_id,
+                item_kind=i.item_kind or ("service" if i.service_item_id else "product"),
                 sort_order=i.sort_order if i.sort_order else idx,
                 title=i.title,
                 model=i.model,
@@ -638,6 +650,8 @@ def update_quote(id: int, data: QuoteIn, db: Session = Depends(get_db), _=Depend
             CommercialQuoteItem(
                 quote_id=q.id,
                 product_id=i.product_id,
+                service_item_id=i.service_item_id,
+                item_kind=i.item_kind or ("service" if i.service_item_id else "product"),
                 sort_order=i.sort_order if i.sort_order else idx,
                 title=i.title,
                 model=i.model,
@@ -681,6 +695,7 @@ def duplicate_quote(id: int, db: Session = Depends(get_db), _=Depends(get_curren
     clone = CommercialQuote(
         number=None,
         status="draft",
+        quote_kind=src.quote_kind or "product",
         quote_date=date.today(),
         deal_id=src.deal_id,
         request_id=src.request_id,
@@ -715,6 +730,8 @@ def duplicate_quote(id: int, db: Session = Depends(get_db), _=Depends(get_curren
             CommercialQuoteItem(
                 quote_id=clone.id,
                 product_id=i.product_id,
+                service_item_id=i.service_item_id,
+                item_kind=i.item_kind or "product",
                 sort_order=i.sort_order,
                 title=i.title,
                 model=i.model,

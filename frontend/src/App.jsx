@@ -6,6 +6,7 @@ import PageFunnel from './Funnel'
 import ProductCatalog from './ProductCatalog'
 import CommercialOffers from './CommercialOffers'
 import SenderProfiles from './SenderProfiles'
+import ServicesCatalog from './ServicesCatalog'
 
 class ErrorBoundary extends React.Component {
   constructor(props){super(props);this.state={error:null}}
@@ -54,6 +55,7 @@ api.interceptors.response.use(
 
 function Login({ onLogin }) {
   const [email, setEmail] = useState(''); const [pwd, setPwd] = useState(''); const [err, setErr] = useState('')
+  useEffect(() => { document.documentElement.setAttribute('data-theme', 'light') }, [])
   const submit = async e => {
     e.preventDefault(); setErr('')
     try {
@@ -64,7 +66,7 @@ function Login({ onLogin }) {
     } catch { setErr('Неверный email или пароль') }
   }
   return (
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#1a1a2e'}}>
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#eef2f7'}}>
       <div style={{background:'var(--surface)',borderRadius:12,padding:'2rem',width:360,boxShadow:'0 4px 24px rgba(0,0,0,0.15)'}}>
         <h2 style={{marginBottom:'0.25rem',color:'#1a1a2e'}}>CRM RUTEST</h2>
         <p style={{color:'#666',fontSize:13,marginBottom:'1.5rem'}}>B2B продажи лабораторного оборудования</p>
@@ -85,7 +87,7 @@ const lbl = {display:'block',fontSize:12,color:'var(--text3)',marginBottom:4,fon
 
 // ── кнопки в таблицах (простые outline / заливка) ───────────────────────────
 const btnT = { fontSize:12, padding:'4px 10px', borderRadius:5, cursor:'pointer', fontWeight:600, whiteSpace:'nowrap' }
-const btnBlue   = { ...btnT, border:'1px solid #185fa5', background:'#eff6ff', color:'var(--primary)' }
+const btnBlue   = { ...btnT, border:'1px solid #185fa5', background:'#eff6ff', color:'#0e4889' }
 const btnRed    = { ...btnT, border:'1px solid #fecaca', background:'#fff5f5', color:'#dc2626' }
 const btnPurple = { ...btnT, border:'1px solid #c4b5fd', background:'#f5f3ff', color:'#7c3aed' }
 const btnGreen  = { ...btnT, border:'1px solid #86efac', background:'#f0fdf4', color:'#166534' }
@@ -181,7 +183,7 @@ function Layout({ user, onLogout }) {
           <Route path="/contractors" element={<PageContractors />} />
           <Route path="/contacts"  element={<PageContacts />} />
           <Route path="/objects"   element={<PageObjects />} />
-          <Route path="/services"  element={<PageServices />} />
+          <Route path="/services"  element={<ServicesCatalog />} />
           <Route path="/dev-reference" element={<PageDeveloperReference />} />
           <Route path="/equipment" element={<PageEquipment />} />
           <Route path="/standards" element={<PageStandards />} />
@@ -1235,9 +1237,9 @@ function PageRequests() {
               </td>
               <Td>{r.created_at?.slice(0,10)}</Td>
               <td style={{padding:'6px 10px',whiteSpace:'nowrap'}}>
-                <button type="button" onClick={()=>setTimelineReq(r)} style={{...btnPurple,marginRight:6}}>📋 История</button>
-                <button type="button" onClick={()=>openEdit(r)} style={{...btnBlue,marginRight:6}}>Изменить</button>
-                <button type="button" onClick={()=>del(r)} style={btnRed}>Удалить</button>
+                <button type="button" onClick={()=>setTimelineReq(r)} style={{...btnPurple,marginRight:6,minWidth:88,height:26,display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'0 8px',lineHeight:1}}>📋 История</button>
+                <button type="button" onClick={()=>openEdit(r)} style={{...btnBlue,marginRight:6,minWidth:88,height:26,display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'0 8px',lineHeight:1}}>Изменить</button>
+                <button type="button" onClick={()=>del(r)} style={{...btnRed,minWidth:88,height:26,display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'0 8px',lineHeight:1}}>Удалить</button>
               </td>
             </tr>
           )
