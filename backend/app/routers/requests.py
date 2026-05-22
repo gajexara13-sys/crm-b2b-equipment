@@ -141,14 +141,35 @@ def list_requests(db: Session = Depends(get_db), _=Depends(get_current_user)) ->
 
 @router.post("")
 def create_request(data: RequestIn, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    count = db.query(Request).count()
+    import re
     y = date.today().year
+    prefix = f"ЗАЯ-{y}-"
+    # Берём максимальный существующий номер за этот год и инкрементируем
+    existing = db.query(Request).filter(Request.number.like(f"{prefix}%")).all()
+    max_n = 0
+    for r in existing:
+        m = re.search(r"(\d+)$", r.number or "")
+        if m:
+            try:
+                max_n = max(max_n, int(m.group(1)))
+            except ValueError:
+                pass
     payload = _request_payload_from_in(data, db)
-    req = Request(number=f"ЗАЯ-{y}-{count+1:03d}", **payload)
-    db.add(req)
-    db.commit()
-    db.refresh(req)
-    return _enrich_request(req)
+    # На случай редкой гонки — повторяем до 10 попыток с инкрементом
+    for attempt in range(10):
+        candidate = f"{prefix}{max_n + 1 + attempt:03d}"
+        if db.query(Request).filter(Request.number == candidate).first():
+            continue
+        req = Request(number=candidate, **payload)
+        db.add(req)
+        try:
+            db.commit()
+            db.refresh(req)
+            return _enrich_request(req)
+        except Exception:
+            db.rollback()
+            continue
+    raise HTTPException(500, "Не удалось сгенерировать уникальный номер заявки")
 
 
 @router.get("/{id}")
