@@ -118,6 +118,7 @@ const NAV_SALES = [
   {to:'/quotes',label:'Коммерческие предложения'},
   {section:'БАЗА'},
   {to:'/catalog-products',label:'Каталог товаров'},
+  {to:'/services',label:'Каталог услуг'},
   {to:'/contractors',label:'Контрагенты'},
   {to:'/sender-profiles',label:'Профили отправителей'},
   {to:'/contacts',label:'Контакты'},
