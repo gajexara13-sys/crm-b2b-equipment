@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 import bcrypt as _bcrypt_lib
@@ -67,6 +68,33 @@ def register(name: str, email: str, password: str, role: str = "laborant", db: S
 def me(current_user: User = Depends(get_current_user)):
     return {"id": current_user.id, "name": current_user.name,
             "email": current_user.email, "role": current_user.role}
+
+
+class ChangePasswordBody(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Проверка длины
+    new_pwd = (body.new_password or "").strip()
+    if len(new_pwd) < 8:
+        raise HTTPException(400, "Новый пароль должен содержать минимум 8 символов")
+    # Проверка текущего пароля
+    if not verify_password(body.current_password or "", current_user.hashed_pwd):
+        raise HTTPException(400, "Неверный текущий пароль")
+    # Новый пароль не должен совпадать со старым
+    if verify_password(new_pwd, current_user.hashed_pwd):
+        raise HTTPException(400, "Новый пароль должен отличаться от текущего")
+    # Обновление
+    current_user.hashed_pwd = hash_password(new_pwd)
+    db.commit()
+    return {"ok": True, "message": "Пароль успешно изменён"}
 
 @router.get("/users")
 def list_users(db: Session = Depends(get_db), _=Depends(get_current_user)):

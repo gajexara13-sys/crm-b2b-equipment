@@ -179,7 +179,11 @@ function Layout({ user, onLogout }) {
       <aside style={{width:210,background:'var(--aside-bg)',color:'#fff',padding:'1.5rem 0',flexShrink:0,display:'flex',flexDirection:'column',transition:'background .25s'}}>
         <div style={{padding:'0 1.25rem 1.25rem',borderBottom:'1px solid var(--aside-border)'}}>
           <div style={{fontSize:13,fontWeight:600,color:'var(--aside-head)'}}>CRM RUTEST</div>
-          <div style={{fontSize:11,color:'var(--aside-text)',marginTop:2}}>{user?.name}</div>
+          <div
+            onClick={()=>navigate('/profile')}
+            style={{fontSize:11,color:'var(--aside-text)',marginTop:2,cursor:'pointer'}}
+            title="Открыть профиль"
+          >{user?.name}</div>
           <div style={{fontSize:10,color:'var(--aside-text)',opacity:0.6,marginTop:1}}>{user?.role}</div>
         </div>
         <nav style={{marginTop:'1rem',flex:1}}>
@@ -221,6 +225,7 @@ function Layout({ user, onLogout }) {
           <Route path="/equipment" element={<PageEquipment />} />
           <Route path="/standards" element={<PageStandards />} />
           <Route path="/funnel" element={<PageFunnel user={user} />} />
+          <Route path="/profile" element={<PageProfile user={user} />} />
           <Route path="*" element={<Navigate to={isSales ? '/today' : '/funnel'} replace />} />
         </Routes>
       </main>
@@ -1856,6 +1861,83 @@ function PageTests(){
     </Card>
   )
 }
+function PageProfile({ user }) {
+  const [cur, setCur] = useState('')
+  const [pw1, setPw1] = useState('')
+  const [pw2, setPw2] = useState('')
+  const [err, setErr] = useState('')
+  const [ok, setOk]   = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setErr(''); setOk('')
+    if (!cur || !pw1 || !pw2) { setErr('Заполните все поля'); return }
+    if (pw1 !== pw2)          { setErr('Новые пароли не совпадают'); return }
+    if (pw1.length < 8)       { setErr('Новый пароль — минимум 8 символов'); return }
+    if (pw1 === cur)          { setErr('Новый пароль должен отличаться от текущего'); return }
+    setLoading(true)
+    try {
+      await api.post('/auth/change-password', { current_password: cur, new_password: pw1 })
+      setOk('Пароль успешно изменён. Используйте его при следующем входе.')
+      setCur(''); setPw1(''); setPw2('')
+    } catch (e) {
+      setErr(e.response?.data?.detail || e.message || 'Ошибка смены пароля')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const roleLabel = {
+    admin: 'Администратор',
+    manager: 'Менеджер',
+    sales: 'Менеджер продаж',
+    lab_head: 'Руководитель лаборатории',
+    laborant: 'Лаборант',
+  }[user?.role] || user?.role
+
+  const card = { background:'var(--surface)', borderRadius:10, padding:'1.25rem 1.5rem', boxShadow:'var(--shadow)', marginBottom:16, maxWidth:560 }
+
+  return (
+    <div style={{ padding: '4px 0' }}>
+      <h2 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>Профиль</h2>
+
+      <div style={card}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Учётная запись</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px 16px', fontSize: 13 }}>
+          <span style={{ color: 'var(--text3)' }}>ФИО:</span>
+          <b style={{ color: 'var(--text)' }}>{user?.name || '—'}</b>
+          <span style={{ color: 'var(--text3)' }}>Email:</span>
+          <b style={{ color: 'var(--text)' }}>{user?.email || '—'}</b>
+          <span style={{ color: 'var(--text3)' }}>Роль:</span>
+          <b style={{ color: 'var(--text)' }}>{roleLabel || '—'}</b>
+        </div>
+      </div>
+
+      <form onSubmit={submit} style={card}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Смена пароля</div>
+
+        <label style={lbl}>Текущий пароль</label>
+        <input type="password" autoComplete="current-password" value={cur} onChange={e=>setCur(e.target.value)} style={inp} />
+
+        <label style={lbl}>Новый пароль (от 8 символов)</label>
+        <input type="password" autoComplete="new-password" value={pw1} onChange={e=>setPw1(e.target.value)} style={inp} />
+
+        <label style={lbl}>Повторите новый пароль</label>
+        <input type="password" autoComplete="new-password" value={pw2} onChange={e=>setPw2(e.target.value)} style={inp} />
+
+        {err && <div style={{ background: 'rgba(239,68,68,0.12)', color: '#991b1b', padding: '8px 12px', borderRadius: 6, fontSize: 13, marginBottom: 10 }}>{err}</div>}
+        {ok  && <div style={{ background: 'rgba(34,197,94,0.12)', color: '#15803d', padding: '8px 12px', borderRadius: 6, fontSize: 13, marginBottom: 10 }}>{ok}</div>}
+
+        <button type="submit" disabled={loading}
+          style={{ padding: '9px 18px', border: 'none', borderRadius: 6, background: loading ? 'var(--text4)' : 'var(--primary)', color: '#fff', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', fontSize: 13 }}>
+          {loading ? 'Сохранение…' : 'Сменить пароль'}
+        </button>
+      </form>
+    </div>
+  )
+}
+
 function PageProtocols() {
   const user = React.useContext(AuthCtx)
   const canSign = user?.role === 'lab_head' || user?.role === 'admin'
