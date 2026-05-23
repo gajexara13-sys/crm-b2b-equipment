@@ -24,9 +24,14 @@ if (-not (Test-Path $LocalDest)) {
     New-Item -ItemType Directory -Path $LocalDest -Force | Out-Null
 }
 
+# Кодировка UTF-8 для консоли и stdout — чтобы кириллица в логах не плыла
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
 function Write-Log($msg) {
     $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg"
-    Add-Content -Path $LogFile -Value $line -Encoding UTF8
+    # Пишем напрямую через .NET — без BOM, корректный UTF-8
+    [System.IO.File]::AppendAllText($LogFile, ($line + "`r`n"), [System.Text.UTF8Encoding]::new($false))
     Write-Host $line
 }
 
