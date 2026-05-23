@@ -12,6 +12,7 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from app.database import get_db
 from app.models.user import User
+from app.rate_limit import rate_limit_dep
 import os
 
 router = APIRouter()
@@ -48,7 +49,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if not user: raise HTTPException(status_code=401, detail="Пользователь не найден")
     return user
 
-@router.post("/login")
+# Rate-limit: 5 попыток за 60 сек, при превышении блок на 5 минут
+@router.post("/login", dependencies=[Depends(rate_limit_dep("login", max_hits=5, window_sec=60, block_sec=300))])
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == form.username).first()
     if not user or not verify_password(form.password, user.hashed_pwd):
@@ -75,7 +77,10 @@ class ChangePasswordBody(BaseModel):
     new_password: str
 
 
-@router.post("/change-password")
+@router.post(
+    "/change-password",
+    dependencies=[Depends(rate_limit_dep("change-password", max_hits=5, window_sec=60, block_sec=300))],
+)
 def change_password(
     body: ChangePasswordBody,
     db: Session = Depends(get_db),
