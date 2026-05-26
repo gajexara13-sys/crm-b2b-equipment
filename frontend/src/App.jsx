@@ -137,6 +137,8 @@ const NAV_ALL = [
   {to:'/dev-reference',label:'Справочник разработчика'},
   {to:'/equipment',label:'Оборудование'},
   {to:'/standards',label:'Стандарты'},
+  {section:'АДМИН'},
+  {to:'/audit-log',label:'Журнал событий'},
 ]
 const NAV_SALES = [
   {section:'CRM'},
@@ -226,6 +228,7 @@ function Layout({ user, onLogout }) {
           <Route path="/standards" element={<PageStandards />} />
           <Route path="/funnel" element={<PageFunnel user={user} />} />
           <Route path="/profile" element={<PageProfile user={user} />} />
+          <Route path="/audit-log" element={<PageAuditLog user={user} />} />
           <Route path="*" element={<Navigate to={isSales ? '/today' : '/funnel'} replace />} />
         </Routes>
       </main>
@@ -1861,6 +1864,161 @@ function PageTests(){
     </Card>
   )
 }
+// ─── Журнал событий (для admin) ──────────────────────────────────────────
+function PageAuditLog({ user }) {
+  const [rows, setRows] = useState([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState('')
+  const [fAction, setFAction] = useState('')
+  const [fEntity, setFEntity] = useState('')
+  const [offset, setOffset] = useState(0)
+  const limit = 100
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr('')
+    try {
+      const params = { limit, offset }
+      if (fAction) params.action = fAction
+      if (fEntity) params.entity_type = fEntity
+      const r = await api.get('/audit-log', { params })
+      setRows(r.data.items || [])
+      setTotal(r.data.total || 0)
+    } catch (e) {
+      setErr(e.response?.data?.detail || e.message || 'Ошибка загрузки журнала')
+    } finally {
+      setLoading(false)
+    }
+  }, [fAction, fEntity, offset])
+
+  useEffect(() => { load() }, [load])
+
+  if (user?.role !== 'admin' && user?.role !== 'lab_head') {
+    return <p style={{ color: 'var(--text3)', padding: 20 }}>Доступ только для администратора.</p>
+  }
+
+  const ACTION_LABEL = {
+    delete_request: { label: 'Удаление заявки',  color: '#dc2626' },
+    delete_quote:   { label: 'Удаление КП',       color: '#dc2626' },
+    delete_task:    { label: 'Удаление задачи',   color: '#dc2626' },
+    delete_product: { label: 'Удаление товара',   color: '#dc2626' },
+  }
+
+  const ENTITY_LABEL = {
+    request: 'Заявка', quote: 'КП', task: 'Задача', product: 'Товар',
+    client:  'Клиент', deal:  'Сделка',
+  }
+
+  const fmtDate = v => v ? new Date(v).toLocaleString('ru-RU', {
+    day:'2-digit', month:'2-digit', year:'numeric',
+    hour:'2-digit', minute:'2-digit', second:'2-digit',
+  }) : '—'
+
+  const fmtDetails = d => {
+    if (!d) return ''
+    if (typeof d === 'string') return d
+    return Object.entries(d).map(([k,v]) => {
+      const val = Array.isArray(v) ? `[${v.join(', ')}]` : v
+      return `${k}: ${val}`
+    }).join(' • ')
+  }
+
+  return (
+    <div style={{ padding: '4px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>
+          Журнал событий <span style={{ color: 'var(--text3)', fontWeight: 400, fontSize: 14 }}>({total})</span>
+        </h2>
+        <button type="button" onClick={() => { setOffset(0); load() }}
+          style={{ padding: '7px 14px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: 'pointer' }}>
+          ↻ Обновить
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+        <select value={fAction} onChange={e => { setFAction(e.target.value); setOffset(0) }} style={{ ...sel, maxWidth: 220, marginBottom: 0 }}>
+          <option value="">Все действия</option>
+          <option value="delete_request">Удаление заявки</option>
+          <option value="delete_quote">Удаление КП</option>
+          <option value="delete_task">Удаление задачи</option>
+          <option value="delete_product">Удаление товара</option>
+        </select>
+        <select value={fEntity} onChange={e => { setFEntity(e.target.value); setOffset(0) }} style={{ ...sel, maxWidth: 220, marginBottom: 0 }}>
+          <option value="">Все типы объектов</option>
+          <option value="request">Заявка</option>
+          <option value="quote">КП</option>
+          <option value="task">Задача</option>
+          <option value="product">Товар</option>
+        </select>
+      </div>
+
+      {err && <div style={{ background: 'rgba(239,68,68,0.12)', color: '#991b1b', padding: '10px 14px', borderRadius: 6, marginBottom: 12, fontSize: 13 }}>{err}</div>}
+      {loading ? <p style={{ color: 'var(--text3)' }}>Загрузка…</p> : (
+        <div style={{ background: 'var(--surface)', borderRadius: 10, overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: 'var(--bg2)' }}>
+                <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text3)', fontWeight: 600, fontSize: 11 }}>Когда</th>
+                <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text3)', fontWeight: 600, fontSize: 11 }}>Кто</th>
+                <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text3)', fontWeight: 600, fontSize: 11 }}>Действие</th>
+                <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text3)', fontWeight: 600, fontSize: 11 }}>Объект</th>
+                <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text3)', fontWeight: 600, fontSize: 11 }}>Подробности</th>
+                <th style={{ textAlign: 'left', padding: '8px 10px', color: 'var(--text3)', fontWeight: 600, fontSize: 11 }}>IP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => {
+                const ac = ACTION_LABEL[r.action] || { label: r.action, color: 'var(--text3)' }
+                const en = ENTITY_LABEL[r.entity_type] || r.entity_type
+                return (
+                  <tr key={r.id} style={{ borderTop: '1px solid var(--border2)' }}>
+                    <td style={{ padding: '8px 10px', color: 'var(--text2)', whiteSpace: 'nowrap' }}>{fmtDate(r.created_at)}</td>
+                    <td style={{ padding: '8px 10px', color: 'var(--text)' }}>
+                      <div style={{ fontWeight: 600 }}>{r.user_email || '—'}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text4)' }}>{r.user_role || ''}</div>
+                    </td>
+                    <td style={{ padding: '8px 10px' }}>
+                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 10, background: 'rgba(220,38,38,0.10)', color: ac.color, fontSize: 11, fontWeight: 600 }}>
+                        {ac.label}
+                      </span>
+                    </td>
+                    <td style={{ padding: '8px 10px', color: 'var(--text2)' }}>
+                      {en} <span style={{ color: 'var(--text4)' }}>#{r.entity_id}</span>
+                    </td>
+                    <td style={{ padding: '8px 10px', color: 'var(--text3)', fontFamily: 'Consolas, monospace', fontSize: 11 }}>
+                      {fmtDetails(r.details)}
+                    </td>
+                    <td style={{ padding: '8px 10px', color: 'var(--text4)', fontFamily: 'Consolas, monospace', fontSize: 11 }}>{r.ip || '—'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          {rows.length === 0 && !loading && (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
+              Журнал пуст. Здесь будут отображаться удаления заявок, КП и других объектов.
+            </div>
+          )}
+        </div>
+      )}
+
+      {total > limit && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12 }}>
+          <button type="button" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - limit))}
+            style={{ padding: '7px 14px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: offset === 0 ? 'not-allowed' : 'pointer', opacity: offset === 0 ? 0.5 : 1 }}>
+            ← Назад
+          </button>
+          <span style={{ alignSelf: 'center', fontSize: 12, color: 'var(--text3)' }}>{offset + 1}–{Math.min(offset + limit, total)} из {total}</span>
+          <button type="button" disabled={offset + limit >= total} onClick={() => setOffset(offset + limit)}
+            style={{ padding: '7px 14px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: (offset + limit >= total) ? 'not-allowed' : 'pointer', opacity: (offset + limit >= total) ? 0.5 : 1 }}>
+            Вперёд →
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function PageProfile({ user }) {
   const [cur, setCur] = useState('')
   const [pw1, setPw1] = useState('')
