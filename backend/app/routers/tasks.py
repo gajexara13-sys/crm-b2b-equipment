@@ -37,34 +37,46 @@ def _end_of_today_utc() -> datetime:
     return now.replace(hour=23, minute=59, second=59, microsecond=999999)
 
 
+def _is_admin(user: User) -> bool:
+    return user.role in ("admin", "lab_head")
+
+
 @router.get("/today")
 def list_today(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    """Незавершённые задачи с дедлайном сегодня или просроченные."""
+    """Незавершённые задачи с дедлайном сегодня или просроченные.
+
+    Admin/lab_head видят задачи всех, остальные — только свои.
+    """
     limit = _end_of_today_utc()
     q = (
         db.query(DealTask, Request, Client)
         .join(Request, DealTask.request_id == Request.id)
         .outerjoin(Client, Request.client_id == Client.id)
-        .filter(DealTask.assigned_to == user.id)
         .filter(DealTask.completed_at.is_(None))
         .filter(DealTask.due_at.isnot(None))
         .filter(DealTask.due_at <= limit)
     )
+    if not _is_admin(user):
+        q = q.filter(DealTask.assigned_to == user.id)
     rows = q.order_by(DealTask.due_at.asc()).all()
     return [_task_row(t, req, cl) for t, req, cl in rows]
 
 
 @router.get("/all")
 def list_all(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    """Все незавершённые задачи пользователя, отсортированные по дедлайну."""
+    """Все незавершённые задачи, отсортированные по дедлайну.
+
+    Admin/lab_head видят задачи всех, остальные — только свои.
+    """
     q = (
         db.query(DealTask, Request, Client)
         .join(Request, DealTask.request_id == Request.id)
         .outerjoin(Client, Request.client_id == Client.id)
-        .filter(DealTask.assigned_to == user.id)
         .filter(DealTask.completed_at.is_(None))
         .filter(DealTask.due_at.isnot(None))
     )
+    if not _is_admin(user):
+        q = q.filter(DealTask.assigned_to == user.id)
     rows = q.order_by(DealTask.due_at.asc()).all()
     return [_task_row(t, req, cl) for t, req, cl in rows]
 
@@ -88,14 +100,18 @@ def list_history(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Завершённые задачи пользователя (выполненные и невыполненные), новые сначала."""
+    """Завершённые задачи, новые сначала.
+
+    Admin/lab_head видят историю всех, остальные — только свою.
+    """
     q = (
         db.query(DealTask, Request, Client)
         .join(Request, DealTask.request_id == Request.id)
         .outerjoin(Client, Request.client_id == Client.id)
-        .filter(DealTask.assigned_to == user.id)
         .filter(DealTask.completed_at.isnot(None))
     )
+    if not _is_admin(user):
+        q = q.filter(DealTask.assigned_to == user.id)
     rows = q.order_by(DealTask.completed_at.desc()).all()
     return [_task_row(t, req, cl) for t, req, cl in rows]
 
