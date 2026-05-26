@@ -4,11 +4,12 @@ import os
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request as FastAPIRequest
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.audit import log_action
 from app.database import get_db
 from app.models.commercial_quote import CommercialQuote, CommercialQuoteItem
 from app.models.company import Company
@@ -765,10 +766,26 @@ def duplicate_quote(id: int, db: Session = Depends(get_db), _=Depends(get_curren
 
 
 @router.delete("/{id}")
-def delete_quote(id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def delete_quote(
+    id: int,
+    request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
     q = db.query(CommercialQuote).filter(CommercialQuote.id == id).first()
     if not q:
         raise HTTPException(404, "КП не найдено")
+    items_count = db.query(CommercialQuoteItem).filter(CommercialQuoteItem.quote_id == id).count()
+    log_action(
+        db, user, "delete_quote", "quote", id,
+        details={
+            "number": q.number,
+            "quote_kind": q.quote_kind,
+            "items_count": items_count,
+            "recipient_name": q.recipient_name,
+        },
+        request=request,
+    )
     db.query(CommercialQuoteItem).filter(CommercialQuoteItem.quote_id == id).delete()
     db.delete(q)
     db.commit()

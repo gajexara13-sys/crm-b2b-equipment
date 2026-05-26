@@ -2,12 +2,13 @@
 from datetime import date
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request as FastAPIRequest
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import Optional, Any, List
 
+from app.audit import log_action
 from app.database import get_db
 from app.models.deal_task import DealTask
 from app.models.price_position import PricePosition
@@ -219,10 +220,29 @@ def update_request(id: int, data: RequestIn, db: Session = Depends(get_db), _=De
 
 
 @router.delete("/{id}")
-def delete_request(id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def delete_request(
+    id: int,
+    request: FastAPIRequest,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
     r = db.query(Request).filter(Request.id == id).first()
     if not r:
         raise HTTPException(404, "Заявка не найдена")
+    # Сначала собираем сведения о задачах, которые будут удалены вместе с заявкой
+    tasks_to_delete = db.query(DealTask).filter(DealTask.request_id == id).all()
+    task_ids = [t.id for t in tasks_to_delete]
+    # Лог: удаление заявки + связанных задач
+    log_action(
+        db, user, "delete_request", "request", id,
+        details={
+            "number": r.number,
+            "client_id": r.client_id,
+            "stage": r.stage,
+            "cascaded_tasks": task_ids,
+        },
+        request=request,
+    )
     db.query(DealTask).filter(DealTask.request_id == id).delete()
     db.delete(r)
     db.commit()

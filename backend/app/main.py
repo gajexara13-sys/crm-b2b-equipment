@@ -26,6 +26,7 @@ from app.routers import (
     crm_quotes,
     uploads,
     services_catalog,
+    audit_log,
 )
 from app.sqlite_migrate import run_sqlite_migrations
 from app.models.material_norm import MaterialNorm  # noqa: F401
@@ -58,6 +59,7 @@ from app.models.test import Test  # noqa: F401
 from app.models.protocol import Protocol  # noqa: F401
 from app.models.deal_task import DealTask  # noqa: F401
 from app.models.catalog_item import CatalogItem  # noqa: F401
+from app.models.audit_log import AuditLog  # noqa: F401
 
 Base.metadata.create_all(bind=engine)
 run_sqlite_migrations()
@@ -101,6 +103,7 @@ app.include_router(crm_deals.router, prefix="/api/crm/deals", tags=["crm-deals"]
 app.include_router(crm_quotes.router, prefix="/api/crm/quotes", tags=["crm-quotes"])
 app.include_router(uploads.router,          prefix="/api/uploads",          tags=["uploads"])
 app.include_router(services_catalog.router, prefix="/api/services-catalog",  tags=["services-catalog"])
+app.include_router(audit_log.router,         prefix="/api/audit-log",        tags=["audit-log"])
 
 _UPLOADS_DIR = _Path(__file__).resolve().parent.parent / "uploads"
 _UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
