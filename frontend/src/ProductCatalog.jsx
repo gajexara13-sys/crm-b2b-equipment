@@ -110,6 +110,163 @@ const inp = { width: '100%', padding: '8px 10px', border: '1px solid var(--inp-b
 const lbl = { display: 'block', fontSize: 12, color: 'var(--text3)', marginBottom: 4, fontWeight: 500 }
 const selStyle = { ...inp, cursor: 'pointer' }
 
+function PhotoUploadSection({ value, onChange }) {
+  const [uploading, setUploading] = useState(false)
+  const [uploadErr, setUploadErr] = useState('')
+  const inputRef = useState(null)
+
+  const urls = value
+    ? value.split('\n').map(l => l.trim()).filter(Boolean)
+    : []
+
+  const addUrls = newUrls => {
+    const all = [...urls, ...newUrls].filter((u, i, a) => a.indexOf(u) === i)
+    onChange(all.join('\n'))
+  }
+
+  const removeUrl = idx => {
+    const next = urls.filter((_, i) => i !== idx)
+    onChange(next.join('\n'))
+  }
+
+  const handleFiles = async files => {
+    if (!files || files.length === 0) return
+    setUploadErr('')
+    setUploading(true)
+    const added = []
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) {
+        setUploadErr(`Файл «${file.name}» не является изображением`)
+        continue
+      }
+      if (file.size > 25 * 1024 * 1024) {
+        setUploadErr(`Файл «${file.name}» слишком большой (максимум 25 МБ)`)
+        continue
+      }
+      try {
+        const fd = new FormData()
+        fd.append('file', file)
+        const token = localStorage.getItem('token')
+        const res = await api.post('/uploads/image', fd, {
+          headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` },
+        })
+        if (res.data?.url) added.push(res.data.url)
+      } catch (e) {
+        const d = e.response?.data?.detail
+        setUploadErr(formatAxiosDetail(d) || e.message || 'Ошибка загрузки')
+      }
+    }
+    if (added.length) addUrls(added)
+    setUploading(false)
+  }
+
+  const handlePaste = async e => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    const imageItems = Array.from(items).filter(i => i.type.startsWith('image/'))
+    if (imageItems.length === 0) return
+    e.preventDefault()
+    const files = imageItems.map(i => i.getAsFile()).filter(Boolean)
+    await handleFiles(files)
+  }
+
+  const [dragOver, setDragOver] = useState(false)
+
+  const handleDrop = async e => {
+    e.preventDefault()
+    setDragOver(false)
+    await handleFiles(e.dataTransfer.files)
+  }
+
+  return (
+    <div>
+      {/* Превью загруженных фото */}
+      {urls.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+          {urls.map((url, i) => (
+            <div key={i} style={{ position: 'relative', width: 90, height: 90, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border2)', background: 'var(--surface2)', flexShrink: 0 }}>
+              <img
+                src={url}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                onError={e => { e.target.style.display = 'none' }}
+              />
+              <button
+                type="button"
+                onClick={() => removeUrl(i)}
+                title="Удалить фото"
+                style={{
+                  position: 'absolute', top: 3, right: 3, width: 20, height: 20,
+                  background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none',
+                  borderRadius: '50%', cursor: 'pointer', fontSize: 13, lineHeight: 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                }}
+              >×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Зона перетаскивания / кнопка загрузки */}
+      <div
+        onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onPaste={handlePaste}
+        style={{
+          border: `2px dashed ${dragOver ? '#185fa5' : 'var(--border2)'}`,
+          borderRadius: 8,
+          padding: '14px 16px',
+          background: dragOver ? 'rgba(24,95,165,0.05)' : 'var(--surface2)',
+          transition: 'all 0.15s',
+          marginBottom: 8,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <label style={{ cursor: uploading ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: 'none' }}
+              disabled={uploading}
+              onChange={e => handleFiles(e.target.files)}
+              ref={r => { inputRef[0] = r }}
+            />
+            <span style={{
+              padding: '6px 14px', borderRadius: 6, border: '1px solid #185fa5',
+              background: '#eff6ff', color: '#0e4889', fontWeight: 700, fontSize: 12,
+              pointerEvents: uploading ? 'none' : 'auto', opacity: uploading ? 0.6 : 1,
+            }}>
+              {uploading ? 'Загрузка…' : '+ Загрузить фото'}
+            </span>
+          </label>
+          <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+            или перетащите файлы сюда · любой размер до 25 МБ · JPG, PNG, WEBP, GIF
+          </span>
+        </div>
+      </div>
+
+      {uploadErr && (
+        <div style={{ fontSize: 12, color: '#dc2626', marginBottom: 6 }}>{uploadErr}</div>
+      )}
+
+      {/* Ручной ввод URL */}
+      <details style={{ marginTop: 4 }}>
+        <summary style={{ fontSize: 12, color: 'var(--text3)', cursor: 'pointer', userSelect: 'none' }}>
+          Вставить URL вручную
+        </summary>
+        <textarea
+          style={{ ...inp, minHeight: 72, resize: 'vertical', fontFamily: 'monospace', fontSize: 12, marginTop: 6 }}
+          placeholder="https://example.com/img1.jpg"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+        />
+      </details>
+    </div>
+  )
+}
+
 export default function ProductCatalog() {
   const confirm = useConfirm()
   const [tree, setTree]                 = useState([])
@@ -554,8 +711,11 @@ export default function ProductCatalog() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={lbl}>Фото (URL, по одному в строке)</label>
-              <textarea style={{ ...inp, minHeight: 88, resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }} placeholder="https://example.com/img1.jpg" value={form.photo_urls_text} onChange={e => setForm(f => ({ ...f, photo_urls_text: e.target.value }))} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#185fa5', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Фото товара</div>
+              <PhotoUploadSection
+                value={form.photo_urls_text}
+                onChange={text => setForm(f => ({ ...f, photo_urls_text: text }))}
+              />
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>

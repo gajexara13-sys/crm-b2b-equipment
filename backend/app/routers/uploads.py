@@ -10,7 +10,7 @@ router = APIRouter()
 
 UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads"
 ALLOWED_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"}
-MAX_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_SIZE = 25 * 1024 * 1024  # 25 MB
 
 
 @router.post("/image")
