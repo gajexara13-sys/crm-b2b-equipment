@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -108,8 +109,14 @@ def list_messages(
             EmailMessage.from_email.ilike(like) |
             EmailMessage.body_text.ilike(like)
         )
+    # Сортировка: сначала самые новые — берём максимальную из дат письма
+    sort_date = func.coalesce(
+        EmailMessage.received_at,
+        EmailMessage.sent_at,
+        EmailMessage.created_at,
+    )
     total = q.count()
-    items = q.order_by(EmailMessage.id.desc()).offset(offset).limit(limit).all()
+    items = q.order_by(sort_date.desc()).offset(offset).limit(limit).all()
     return {"total": total, "items": [_msg_to_dict(m) for m in items]}
 
 
