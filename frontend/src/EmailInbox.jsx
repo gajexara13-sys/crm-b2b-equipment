@@ -42,11 +42,63 @@ function avatarColor(str) {
 
 function stripHtml(html) {
   if (!html) return ''
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200)
+  // Сначала удаляем блоки <style>, <script>, <head> вместе с содержимым
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<head[\s\S]*?<\/head>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 200)
 }
 
 function parseAttachments(json) {
   try { return json ? JSON.parse(json) : [] } catch { return [] }
+}
+
+// ─── Изолированный рендер HTML-письма (через iframe) ─────────────────────────
+
+function EmailIframe({ html }) {
+  const ref = useRef(null)
+
+  // Добавляем базовые стили для удобного чтения внутри iframe
+  const doc = `<!DOCTYPE html><html><head>
+    <meta charset="utf-8">
+    <style>
+      * { box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+             font-size: 14px; line-height: 1.6; color: #1a1a2e; margin: 0; padding: 0;
+             word-break: break-word; }
+      a { color: #185fa5; }
+      img { max-width: 100%; height: auto; }
+      pre, code { white-space: pre-wrap; font-size: 13px; }
+      blockquote { border-left: 3px solid #ddd; margin: 8px 0; padding-left: 12px; color: #666; }
+    </style>
+  </head><body>${html || ''}</body></html>`
+
+  const onLoad = () => {
+    const iframe = ref.current
+    if (!iframe) return
+    try {
+      const body = iframe.contentDocument?.body
+      if (body) {
+        // Авторесайз по высоте содержимого
+        iframe.style.height = (body.scrollHeight + 16) + 'px'
+      }
+    } catch {}
+  }
+
+  return (
+    <iframe
+      ref={ref}
+      srcDoc={doc}
+      onLoad={onLoad}
+      title="email"
+      sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+      style={{ width: '100%', border: 'none', minHeight: 80, display: 'block' }}
+    />
+  )
 }
 
 // ─── Аватар отправителя ───────────────────────────────────────────────────────
@@ -122,11 +174,16 @@ function ThreadPane({ message, allMessages, onClose, onReply, onDelete }) {
       </div>
 
       {/* Messages scroll */}
-      <div ref={bodyRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div ref={bodyRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {loading ? (
           <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 40 }}>Загрузка...</div>
         ) : msgs.map((m, idx) => (
-          <MessageCard key={m.id} m={m} defaultOpen={idx === msgs.length - 1} />
+          <MessageCard
+            key={m.id}
+            m={m}
+            // Последнее письмо раскрыто, остальные свёрнуты
+            defaultOpen={idx === msgs.length - 1}
+          />
         ))}
       </div>
 
@@ -144,72 +201,90 @@ function ThreadPane({ message, allMessages, onClose, onReply, onDelete }) {
 function MessageCard({ m, defaultOpen }) {
   const [open, setOpen] = useState(defaultOpen)
   const attachments = parseAttachments(m.attachments_json || m.attachments)
+  const isOut = m.direction === 'out'
+  const senderName = isOut ? 'Вы' : (m.from_name || m.from_email || 'Неизвестно')
+  const preview = stripHtml(m.body_html) || m.body_text || ''
+  const dateStr = formatDate(m.received_at || m.sent_at || m.created_at)
 
   return (
     <div style={{
       border: '1px solid var(--inp-border)', borderRadius: 10,
       background: 'var(--surface)', overflow: 'hidden',
+      boxShadow: open ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
     }}>
-      {/* Card header */}
+      {/* ── Заголовок письма (всегда виден) ── */}
       <div
         onClick={() => setOpen(o => !o)}
         style={{
-          padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'center',
-          cursor: 'pointer', background: open ? 'transparent' : 'var(--surface2)',
+          padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10,
+          cursor: 'pointer',
+          background: open ? 'var(--surface)' : 'var(--surface2)',
+          transition: 'background .1s',
         }}
       >
-        <Avatar name={m.direction === 'out' ? 'Я' : (m.from_name || m.from_email)} email={m.from_email} size={34} />
+        <Avatar name={isOut ? null : (m.from_name || m.from_email)} email={m.from_email} size={32} />
+
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>
-            {m.direction === 'out' ? 'Вы (исходящее)' : (m.from_name || m.from_email || 'Неизвестно')}
-            {m.from_email && m.direction !== 'out' && (
-              <span style={{ fontWeight: 400, color: 'var(--text3)', fontSize: 12, marginLeft: 6 }}>
-                &lt;{m.from_email}&gt;
-              </span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+              {isOut && <span style={{ color: 'var(--text3)', marginRight: 4, fontWeight: 400 }}>↗</span>}
+              {senderName}
+            </span>
+            {!isOut && m.from_email && (
+              <span style={{ fontSize: 11, color: 'var(--text4)' }}>&lt;{m.from_email}&gt;</span>
+            )}
+            {isOut && m.to_email && (
+              <span style={{ fontSize: 11, color: 'var(--text4)' }}>→ {m.to_email}</span>
             )}
           </div>
           {!open && (
-            <div style={{ fontSize: 12, color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {stripHtml(m.body_html) || m.body_text || ''}
+            <div style={{ fontSize: 12, color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+              {preview || '(нет текста)'}
             </div>
           )}
-          {open && m.to_email && (
-            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
-              Кому: {m.to_email}
+          {open && (
+            <div style={{ fontSize: 11, color: 'var(--text4)', marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {m.to_email && <span>Кому: {m.to_email}</span>}
+              {m.cc_email && <span>Копия: {m.cc_email}</span>}
             </div>
           )}
         </div>
-        <span style={{ fontSize: 11, color: 'var(--text3)', flexShrink: 0 }}>
-          {formatDate(m.received_at || m.sent_at || m.created_at)}
-        </span>
-        <span style={{ fontSize: 12, color: 'var(--text3)', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {attachments.length > 0 && (
+            <span title={`${attachments.length} вложений`} style={{ fontSize: 13, opacity: 0.6 }}>📎{attachments.length > 1 ? attachments.length : ''}</span>
+          )}
+          <span style={{ fontSize: 11, color: 'var(--text3)' }}>{dateStr}</span>
+          <span style={{ fontSize: 10, color: 'var(--text4)', width: 12, textAlign: 'center' }}>{open ? '▲' : '▼'}</span>
+        </div>
       </div>
 
-      {/* Card body */}
+      {/* ── Тело письма (раскрывается) ── */}
       {open && (
-        <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--inp-border)' }}>
-          <div style={{ paddingTop: 14 }}>
-            {m.body_html ? (
-              <div
-                style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--text)', wordBreak: 'break-word' }}
-                dangerouslySetInnerHTML={{ __html: m.body_html }}
-              />
-            ) : (
-              <pre style={{
-                fontSize: 14, lineHeight: 1.7, color: 'var(--text)',
-                whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0,
-              }}>{m.body_text || ''}</pre>
-            )}
+        <div style={{ borderTop: '1px solid var(--inp-border)' }}>
+          {/* Контент */}
+          <div style={{ padding: '16px 16px 8px' }}>
+            {m.body_html
+              ? <EmailIframe html={m.body_html} />
+              : (
+                <pre style={{
+                  fontSize: 14, lineHeight: 1.7, color: 'var(--text)',
+                  whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0,
+                }}>{m.body_text || '(нет текста)'}</pre>
+              )
+            }
           </div>
+
+          {/* Вложения */}
           {attachments.length > 0 && (
-            <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ padding: '0 16px 14px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {attachments.map((a, i) => (
                 <div key={i} style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   background: 'var(--surface2)', border: '1px solid var(--inp-border)',
                   borderRadius: 8, padding: '5px 12px', fontSize: 12, color: 'var(--text2)',
                 }}>
-                  <span style={{ fontSize: 16 }}>📎</span>
+                  <span style={{ fontSize: 15 }}>📎</span>
                   <span>{a.name}</span>
                 </div>
               ))}
