@@ -27,6 +27,7 @@ from app.routers import (
     uploads,
     services_catalog,
     audit_log,
+    email as email_router,
 )
 from app.sqlite_migrate import run_sqlite_migrations
 from app.models.material_norm import MaterialNorm  # noqa: F401
@@ -60,11 +61,39 @@ from app.models.protocol import Protocol  # noqa: F401
 from app.models.deal_task import DealTask  # noqa: F401
 from app.models.catalog_item import CatalogItem  # noqa: F401
 from app.models.audit_log import AuditLog  # noqa: F401
+from app.models.email_message import EmailMessage  # noqa: F401
+from app.models.email_settings import EmailSettings  # noqa: F401
 
 Base.metadata.create_all(bind=engine)
 run_sqlite_migrations()
 
 app = FastAPI(title="CRM RUTEST", version="1.0.0", redirect_slashes=False)
+
+
+# ─── APScheduler: фоновый опрос IMAP ───────────────────────────────────────
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from app.database import SessionLocal as _SessionLocal
+    from app.services.imap_service import sync_inbox as _sync_inbox
+
+    def _imap_sync_job() -> None:
+        db = _SessionLocal()
+        try:
+            result = _sync_inbox(db)
+            if result.get("synced"):
+                print(f"[EMAIL] IMAP sync: +{result['synced']} новых писем", flush=True)
+        except Exception as exc:
+            print(f"[EMAIL] IMAP sync error: {exc}", flush=True)
+        finally:
+            db.close()
+
+    _scheduler = BackgroundScheduler(daemon=True)
+    _scheduler.add_job(_imap_sync_job, "interval", minutes=5, id="imap_sync")
+    _scheduler.start()
+    print("[EMAIL] APScheduler запущен (IMAP каждые 5 мин)", flush=True)
+except ImportError:
+    print("[EMAIL] apscheduler не установлен — фоновый опрос IMAP отключён", flush=True)
+# ────────────────────────────────────────────────────────────────────────────
 
 
 @app.on_event("startup")
@@ -104,6 +133,7 @@ app.include_router(crm_quotes.router, prefix="/api/crm/quotes", tags=["crm-quote
 app.include_router(uploads.router,          prefix="/api/uploads",          tags=["uploads"])
 app.include_router(services_catalog.router, prefix="/api/services-catalog",  tags=["services-catalog"])
 app.include_router(audit_log.router,         prefix="/api/audit-log",        tags=["audit-log"])
+app.include_router(email_router.router,      prefix="/api/email",            tags=["email"])
 
 _UPLOADS_DIR = _Path(__file__).resolve().parent.parent / "uploads"
 _UPLOADS_DIR.mkdir(parents=True, exist_ok=True)

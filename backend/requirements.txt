@@ -16,3 +16,4 @@ docxtpl==0.19.1
 reportlab==4.2.5
 pymorphy3==2.0.2
 docx2pdf==0.1.8
+apscheduler>=3.10

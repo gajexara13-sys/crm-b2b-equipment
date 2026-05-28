@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, createContext, useContext } from 'react'
+import React, { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import axios from 'axios'
 import TestABS from './TestABS'
@@ -7,6 +7,7 @@ import ProductCatalog from './ProductCatalog'
 import CommercialOffers from './CommercialOffers'
 import SenderProfiles from './SenderProfiles'
 import ServicesCatalog from './ServicesCatalog'
+import EmailInbox from './EmailInbox'
 
 class ErrorBoundary extends React.Component {
   constructor(props){super(props);this.state={error:null}}
@@ -127,30 +128,26 @@ const NAV_ALL = [
   {to:'/funnel',label:'Доска'},
   {to:'/today',label:'Задачи'},
   {to:'/quotes',label:'Коммерческие предложения'},
+  {to:'/email',label:'✉ Почта'},
   {section:'БАЗА'},
   {to:'/catalog-products',label:'Каталог товаров'},
   {to:'/contractors',label:'Контрагенты'},
-  {to:'/sender-profiles',label:'Профили отправителей'},
   {to:'/contacts',label:'Контакты'},
-  {to:'/objects',label:'Объекты'},
   {to:'/services',label:'Каталог услуг'},
   {to:'/dev-reference',label:'Справочник разработчика'},
-  {to:'/equipment',label:'Оборудование'},
-  {to:'/standards',label:'Стандарты'},
-  {section:'АДМИН'},
-  {to:'/audit-log',label:'Журнал событий'},
 ]
 const NAV_SALES = [
   {section:'CRM'},
   {to:'/funnel',label:'Доска'},
   {to:'/today',label:'Задачи'},
   {to:'/quotes',label:'Коммерческие предложения'},
+  {to:'/email',label:'✉ Почта'},
   {section:'БАЗА'},
   {to:'/catalog-products',label:'Каталог товаров'},
   {to:'/services',label:'Каталог услуг'},
   {to:'/contractors',label:'Контрагенты'},
-  {to:'/sender-profiles',label:'Профили отправителей'},
   {to:'/contacts',label:'Контакты'},
+  {to:'/dev-reference',label:'Справочник разработчика'},
 ]
 
 function Layout({ user, onLogout }) {
@@ -223,12 +220,13 @@ function Layout({ user, onLogout }) {
           <Route path="/contacts"  element={<PageContacts />} />
           <Route path="/objects"   element={<PageObjects />} />
           <Route path="/services"  element={<ServicesCatalog />} />
-          <Route path="/dev-reference" element={<PageDeveloperReference />} />
+          <Route path="/dev-reference" element={<PageDevReference user={user} />} />
           <Route path="/equipment" element={<PageEquipment />} />
           <Route path="/standards" element={<PageStandards />} />
           <Route path="/funnel" element={<PageFunnel user={user} />} />
           <Route path="/profile" element={<PageProfile user={user} />} />
           <Route path="/audit-log" element={<PageAuditLog user={user} />} />
+          <Route path="/email" element={<PageEmail />} />
           <Route path="*" element={<Navigate to={isSales ? '/today' : '/funnel'} replace />} />
         </Routes>
       </main>
@@ -700,7 +698,7 @@ function SampleForm({ requests, onSave, onCancel, initial }) {
               {normBusy?'…':'Загрузить CSV с диска'}
             </Btn>
           </div>
-          <div style={{fontSize:11,color:'var(--text3)',marginTop:6}}>
+          <div style={{fontSize:11,color:'var(--text3)',marginTop:6,marginBottom:24}}>
             Формат: разделитель «;» — (1) категория; (2) объект испытаний; (3) НД к материалу; (4) доп. НД. Дефолтный файл на сервере: <code style={{fontSize:10}}>backend/data/material_objects_categories.csv</code>. При выборе материала подставляется наименование.
           </div>
         </div>
@@ -958,6 +956,7 @@ function RequestTimeline({req, clients, onClose}){
   const [nType,setNType]=useState('note')
   const [nText,setNText]=useState('')
   const [saving,setSaving]=useState(false)
+  const [timelineTab,setTimelineTab]=useState('history')
   const client=clients.find(c=>c.id===req.client_id)
   const confirm = useConfirm()
 
@@ -1006,6 +1005,23 @@ function RequestTimeline({req, clients, onClose}){
         <button onClick={onClose} style={{padding:'6px 14px',background:'transparent',color:'var(--text3)',border:'1px solid var(--border)',borderRadius:6,fontSize:13,cursor:'pointer'}}>← Назад</button>
       </div>
 
+      {/* Вкладки */}
+      <div style={{display:'flex',gap:4,marginBottom:16,borderBottom:'1px solid var(--border)',paddingBottom:1}}>
+        {[{id:'history',label:'📋 История'},{id:'email',label:'✉ Почта'}].map(t=>(
+          <button key={t.id} onClick={()=>setTimelineTab(t.id)}
+            style={{border:'none',background:'none',cursor:'pointer',padding:'6px 18px',fontSize:13,
+              fontWeight:timelineTab===t.id?700:400,
+              color:timelineTab===t.id?'var(--primary)':'var(--text3)',
+              borderBottom:timelineTab===t.id?'2px solid var(--primary)':'2px solid transparent',
+              marginBottom:-2}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {timelineTab==='email' && <EmailInbox requestId={req.id} compact />}
+
+      {timelineTab==='history' && <>
       {/* Форма добавления */}
       <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,padding:'14px 16px',marginBottom:20}}>
         <div style={{fontSize:12,fontWeight:600,color:'var(--text2)',marginBottom:8}}>Добавить запись</div>
@@ -1023,7 +1039,7 @@ function RequestTimeline({req, clients, onClose}){
           onKeyDown={e=>{if(e.ctrlKey&&e.key==='Enter')addNote()}}
           placeholder="О чём договорились, суть звонка, ссылка на файл... (Ctrl+Enter для отправки)"
           rows={3} style={{width:'100%',boxSizing:'border-box',padding:'8px 10px',border:'1px solid var(--inp-border)',borderRadius:6,fontSize:13,resize:'vertical',fontFamily:'inherit'}}/>
-        <div style={{display:'flex',justifyContent:'flex-end',marginTop:6}}>
+        <div style={{display:'flex',justifyContent:'flex-end',marginTop:6,marginBottom:24}}>
           <button onClick={addNote} disabled={saving||!nText.trim()}
             style={{...btnPrimary,padding:'5px 14px',opacity:saving||!nText.trim()?0.5:1,cursor:saving||!nText.trim()?'default':'pointer'}}>
             {saving?'Сохраняю...':'Добавить'}
@@ -1067,6 +1083,7 @@ function RequestTimeline({req, clients, onClose}){
               </div>
             </div>
       }
+      </>}
     </div>
   )
 }
@@ -1315,25 +1332,51 @@ function PageRequests() {
   )
 }
 
-const EMPTY_CLIENT = {name:'',inn:'',kpp:'',contact_name:'',contact_position:'',contact_phone:'',contact_email:'',address:''}
-const CLIENT_FIELDS = [['name','Название организации *',true],['inn','ИНН'],['kpp','КПП'],['contact_name','ФИО руководителя (Фам. Имя Отч.)'],['contact_position','Должность руководителя'],['contact_phone','Телефон'],['contact_email','Email'],['address','Юридический адрес']]
+const EMPTY_CLIENT = {name:'',inn:'',kpp:'',contact_name:'',contact_position:'',contact_phone:'',contact_email:'',address:'',contact2_name:'',contact2_position:'',contact2_phone:'',contact2_email:''}
+const EMPTY_CONTACT = {name:'',position:'',phone:'',email:''}
+
+const DIR2C2 = {contact_name:'contact2_name',contact_position:'contact2_position',contact_phone:'contact2_phone',contact_email:'contact2_email'}
 
 function PageContractors() {
   const [rows,setRows]=useState([])
   const [editing,setEditing]=useState(null)
   const [form,setForm]=useState(EMPTY_CLIENT)
+  const [sameDir,setSameDir]=useState(false)
+  const [extraContacts,setExtraContacts]=useState([])
+  const [emailClient,setEmailClient]=useState(null)
   const confirm = useConfirm()
   const load=()=>api.get('/clients').then(r=>setRows(r.data))
   useEffect(()=>{load()},[])
 
-  const openNew=()=>{setForm(EMPTY_CLIENT);setEditing({})}
-  const openEdit=r=>{setForm({name:r.name||'',inn:r.inn||'',kpp:r.kpp||'',contact_name:r.contact_name||'',contact_position:r.contact_position||'',contact_phone:r.contact_phone||'',contact_email:r.contact_email||'',address:r.address||''});setEditing(r)}
-  const cancel=()=>setEditing(null)
+  const openNew=()=>{setForm(EMPTY_CLIENT);setEditing({});setSameDir(false);setExtraContacts([])}
+  const openEdit=r=>{
+    const f={name:r.name||'',inn:r.inn||'',kpp:r.kpp||'',contact_name:r.contact_name||'',contact_position:r.contact_position||'',contact_phone:r.contact_phone||'',contact_email:r.contact_email||'',address:r.address||'',contact2_name:r.contact2_name||'',contact2_position:r.contact2_position||'',contact2_phone:r.contact2_phone||'',contact2_email:r.contact2_email||''}
+    setForm(f);setEditing(r)
+    setSameDir(!!(r.contact2_name&&r.contact2_name===r.contact_name))
+    setExtraContacts(r.extra_contacts||[])
+  }
+  const cancel=()=>{setEditing(null);setSameDir(false);setExtraContacts([])}
+
+  const setF=(k,v)=>setForm(f=>{
+    const u={...f,[k]:v}
+    if(sameDir&&DIR2C2[k]) u[DIR2C2[k]]=v
+    return u
+  })
+
+  const toggleSameDir=e=>{
+    const v=e.target.checked; setSameDir(v)
+    if(v) setForm(f=>({...f,contact2_name:f.contact_name,contact2_position:f.contact_position,contact2_phone:f.contact_phone,contact2_email:f.contact_email}))
+  }
+
+  const addContact=()=>setExtraContacts(p=>[...p,{...EMPTY_CONTACT}])
+  const removeContact=i=>setExtraContacts(p=>p.filter((_,idx)=>idx!==i))
+  const setContact=(i,k,v)=>setExtraContacts(p=>p.map((item,idx)=>idx===i?{...item,[k]:v}:item))
 
   const save=async()=>{
-    if(editing?.id) await api.put(`/clients/${editing.id}`,form)
-    else await api.post('/clients',form)
-    setEditing(null); load()
+    const payload={...form,extra_contacts:extraContacts}
+    if(editing?.id) await api.put(`/clients/${editing.id}`,payload)
+    else await api.post('/clients',payload)
+    setEditing(null);setSameDir(false);setExtraContacts([]); load()
   }
   const del=async r=>{
     const ok=await confirm({title:'Удаление',message:`Удалить контрагента «${r.name}»?`,danger:true,confirmText:'Удалить'})
@@ -1341,27 +1384,84 @@ function PageContractors() {
     await api.delete(`/clients/${r.id}`); load()
   }
 
+  const SecHead=({children})=>(
+    <div style={{gridColumn:'1/-1',fontSize:11,fontWeight:700,color:'var(--text4)',textTransform:'uppercase',letterSpacing:'0.06em',marginTop:8,paddingBottom:5,borderBottom:'1px solid var(--border)'}}>
+      {children}
+    </div>
+  )
+  const disStyle={...inp,background:'var(--surface3,#f1f5f9)',color:'var(--text4)',cursor:'not-allowed'}
+
   return (
     <Card title={`Контрагенты (${rows.length})`} action={!editing&&<Btn onClick={openNew}>+ Новый контрагент</Btn>}>
       {editing!==null && (
         <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:10,padding:'1.25rem',marginBottom:'1rem'}}>
           <div style={{fontSize:13,fontWeight:600,color:'var(--primary)',marginBottom:12}}>{editing?.id?'Редактировать контрагента':'Новый контрагент'}</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-            {CLIENT_FIELDS.map(([k,p,req])=>(
-              <div key={k}><label style={lbl}>{p}</label>
-                <input value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} placeholder={p} style={inp} required={!!req}/>
-              </div>
-            ))}
+            <SecHead>Реквизиты организации</SecHead>
+            <div><label style={lbl}>Название организации *</label><input value={form.name} onChange={e=>setF('name',e.target.value)} placeholder="Название организации" style={inp} required/></div>
+            <div><label style={lbl}>ИНН</label><input value={form.inn} onChange={e=>setF('inn',e.target.value)} placeholder="ИНН" style={inp}/></div>
+            <div><label style={lbl}>КПП</label><input value={form.kpp} onChange={e=>setF('kpp',e.target.value)} placeholder="КПП" style={inp}/></div>
+            <div><label style={lbl}>Юридический адрес</label><input value={form.address} onChange={e=>setF('address',e.target.value)} placeholder="Юридический адрес" style={inp}/></div>
+            <SecHead>Руководитель</SecHead>
+            <div><label style={lbl}>ФИО руководителя</label><input value={form.contact_name} onChange={e=>setF('contact_name',e.target.value)} placeholder="Фамилия Имя Отчество" style={inp}/></div>
+            <div><label style={lbl}>Должность руководителя</label><input value={form.contact_position} onChange={e=>setF('contact_position',e.target.value)} placeholder="Должность" style={inp}/></div>
+            <div><label style={lbl}>Телефон</label><input value={form.contact_phone} onChange={e=>setF('contact_phone',e.target.value)} placeholder="+7..." style={inp}/></div>
+            <div><label style={lbl}>Email</label><input value={form.contact_email} onChange={e=>setF('contact_email',e.target.value)} placeholder="email@company.ru" style={inp}/></div>
+            <SecHead>Контактное лицо для переговоров</SecHead>
+            <div style={{gridColumn:'1/-1',marginBottom:2}}>
+              <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,color:'var(--text2)',userSelect:'none'}}>
+                <input type="checkbox" checked={sameDir} onChange={toggleSameDir} style={{width:15,height:15,accentColor:'var(--primary)',cursor:'pointer'}}/>
+                Совпадает с руководителем
+              </label>
+            </div>
+            <div><label style={lbl}>ФИО контактного лица</label><input value={form.contact2_name} onChange={e=>setF('contact2_name',e.target.value)} placeholder="Фамилия Имя Отчество" style={sameDir?disStyle:inp} disabled={sameDir}/></div>
+            <div><label style={lbl}>Должность</label><input value={form.contact2_position} onChange={e=>setF('contact2_position',e.target.value)} placeholder="Должность" style={sameDir?disStyle:inp} disabled={sameDir}/></div>
+            <div><label style={lbl}>Телефон</label><input value={form.contact2_phone} onChange={e=>setF('contact2_phone',e.target.value)} placeholder="+7..." style={sameDir?disStyle:inp} disabled={sameDir}/></div>
+            <div><label style={lbl}>Email</label><input value={form.contact2_email} onChange={e=>setF('contact2_email',e.target.value)} placeholder="email@contact.ru" style={sameDir?disStyle:inp} disabled={sameDir}/></div>
           </div>
-          <div style={{display:'flex',gap:8}}><Btn onClick={save}>Сохранить</Btn><Btn variant="secondary" onClick={cancel}>Отмена</Btn></div>
+          {/* ── Дополнительные контакты ── */}
+          <div style={{gridColumn:'1/-1',fontSize:11,fontWeight:700,color:'var(--text4)',textTransform:'uppercase',letterSpacing:'0.06em',marginTop:8,paddingBottom:5,borderBottom:'1px solid var(--border)'}}>
+            Дополнительные контакты
+          </div>
+          {extraContacts.map((ct,i)=>(
+            <div key={i} style={{gridColumn:'1/-1',border:'1px solid var(--border)',borderRadius:8,padding:'10px 12px',background:'var(--surface)'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                <span style={{fontSize:12,fontWeight:600,color:'var(--text3)'}}>Контакт {i+1}</span>
+                <button type="button" onClick={()=>removeContact(i)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:18,lineHeight:1,padding:'0 4px'}} title="Удалить">×</button>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                <div><label style={lbl}>ФИО</label><input value={ct.name} onChange={e=>setContact(i,'name',e.target.value)} placeholder="Фамилия Имя Отчество" style={inp}/></div>
+                <div><label style={lbl}>Должность</label><input value={ct.position} onChange={e=>setContact(i,'position',e.target.value)} placeholder="Должность" style={inp}/></div>
+                <div><label style={lbl}>Телефон</label><input value={ct.phone} onChange={e=>setContact(i,'phone',e.target.value)} placeholder="+7..." style={inp}/></div>
+                <div><label style={lbl}>Email</label><input value={ct.email} onChange={e=>setContact(i,'email',e.target.value)} placeholder="email@company.ru" style={inp}/></div>
+              </div>
+            </div>
+          ))}
+          <div style={{gridColumn:'1/-1',marginTop:6,marginBottom:24}}>
+            <button type="button" onClick={addContact}
+              style={{fontSize:12,fontWeight:600,color:'var(--primary)',background:'none',border:'1px solid var(--primary)',borderRadius:7,padding:'5px 14px',cursor:'pointer'}}>
+              + Добавить контакт
+            </button>
+          </div>
+          <div style={{display:'flex',gap:8,gridColumn:'1/-1',marginTop:4}}><Btn onClick={save}>Сохранить</Btn><Btn variant="secondary" onClick={cancel}>Отмена</Btn></div>
         </div>
       )}
       <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-        <thead><tr><Th>Организация</Th><Th>ИНН</Th><Th>Руководитель</Th><Th>Должность</Th><Th>Телефон</Th><Th>Email</Th><Th>Адрес</Th><Th>Действия</Th></tr></thead>
+        <thead><tr><Th>Организация</Th><Th>ИНН</Th><Th>Руководитель</Th><Th>Контакт для переговоров</Th><Th>Телефон</Th><Th>Email</Th><Th>Адрес</Th><Th>Действия</Th></tr></thead>
         <tbody>{rows.map(r=>(
           <tr key={r.id} style={{borderBottom:'1px solid var(--border2)'}}>
-            <Td bold>{r.name}</Td><Td>{r.inn}</Td><Td>{r.contact_name}</Td><Td>{r.contact_position}</Td><Td>{r.contact_phone}</Td><Td>{r.contact_email}</Td><Td>{r.address}</Td>
+            <Td bold>{r.name}</Td>
+            <Td>{r.inn}</Td>
+            <Td>{r.contact_name}{r.contact_position&&<div style={{fontSize:11,color:'var(--text4)'}}>{r.contact_position}</div>}</Td>
+            <Td>{r.contact2_name
+              ?<>{r.contact2_name}{r.contact2_position&&<div style={{fontSize:11,color:'var(--text4)'}}>{r.contact2_position}</div>}</>
+              :<span style={{color:'var(--text5)',fontStyle:'italic'}}>—</span>}
+            </Td>
+            <Td>{r.contact2_phone||r.contact_phone}</Td>
+            <Td>{r.contact2_email||r.contact_email}</Td>
+            <Td>{r.address}</Td>
             <td style={{padding:'6px 10px',whiteSpace:'nowrap'}}>
+              <button type="button" onClick={()=>setEmailClient(r)} style={{...btnPurple,marginRight:6}}>✉ Почта</button>
               <button type="button" onClick={()=>openEdit(r)} style={{...btnBlue,marginRight:6}}>Изменить</button>
               <button type="button" onClick={()=>del(r)} style={btnRed}>Удалить</button>
             </td>
@@ -1369,6 +1469,19 @@ function PageContractors() {
         ))}</tbody>
       </table>
       {rows.length===0 && <p style={{color:'var(--text4)',textAlign:'center',padding:'2rem',fontSize:13}}>Контрагентов пока нет</p>}
+      {emailClient && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:900,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'var(--surface)',borderRadius:12,width:'92%',maxWidth:900,maxHeight:'88vh',display:'flex',flexDirection:'column',boxShadow:'0 8px 32px rgba(0,0,0,0.25)',overflow:'hidden'}}>
+            <div style={{padding:'14px 20px',borderBottom:'1px solid var(--inp-border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span style={{fontWeight:700,fontSize:15}}>✉ Почта — {emailClient.name}</span>
+              <button onClick={()=>setEmailClient(null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'var(--text3)'}}>✕</button>
+            </div>
+            <div style={{flex:1,overflowY:'auto',padding:'16px 20px'}}>
+              <EmailInbox clientId={emailClient.id} compact />
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }
@@ -1601,6 +1714,286 @@ function PageServices(){
         </div>
       )}
     </Card>
+  )
+}
+
+// ─── Настройки почты (SMTP/IMAP) ────────────────────────────────────────────
+function EmailSettings() {
+  const [cfg, setCfg] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [msg, setMsg] = useState(null)
+  const [testResult, setTestResult] = useState(null)
+
+  useEffect(() => {
+    api.get('/email/settings')
+      .then(r => setCfg(r.data))
+      .catch(() => setCfg({}))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const set = (k, v) => setCfg(c => ({ ...c, [k]: v }))
+
+  const save = async () => {
+    setSaving(true); setMsg(null)
+    try {
+      await api.put('/email/settings', cfg)
+      setMsg({ ok: true, text: 'Настройки сохранены' })
+    } catch (e) {
+      setMsg({ ok: false, text: e.response?.data?.detail || 'Ошибка сохранения' })
+    } finally { setSaving(false) }
+  }
+
+  const test = async () => {
+    setTesting(true); setTestResult(null)
+    try {
+      const r = await api.post('/email/settings/test')
+      setTestResult(r.data)
+    } catch {
+      setTestResult({ smtp: { ok: false, message: 'Ошибка' }, imap: { ok: false, message: 'Ошибка' } })
+    } finally { setTesting(false) }
+  }
+
+  if (loading) return <div style={{ color: 'var(--text3)', padding: 20 }}>Загрузка...</div>
+
+  const fld = (label, field, type = 'text', placeholder = '') => (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ display: 'block', fontSize: 12, color: 'var(--text3)', marginBottom: 4 }}>{label}</label>
+      <input
+        type={type}
+        value={cfg[field] ?? ''}
+        onChange={e => set(field, type === 'number' ? Number(e.target.value) : e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          padding: '8px 12px', border: '1px solid var(--inp-border)',
+          borderRadius: 8, background: 'var(--inp-bg)', color: 'var(--text)', fontSize: 13,
+        }}
+      />
+    </div>
+  )
+
+  return (
+    <div style={{ maxWidth: 680 }}>
+      {/* Enabled toggle */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20,
+        padding: '12px 16px', background: 'var(--surface2)', borderRadius: 10,
+        border: '1px solid var(--inp-border)',
+      }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
+          <input type="checkbox" checked={!!cfg.is_enabled} onChange={e => set('is_enabled', e.target.checked)}
+            style={{ width: 17, height: 17, accentColor: 'var(--primary)', cursor: 'pointer' }} />
+          <span style={{ fontWeight: 600 }}>Включить почтовый модуль</span>
+        </label>
+        {cfg.is_enabled && <span style={{ fontSize: 12, color: '#2d9a5b', background: '#e6f9f0', borderRadius: 6, padding: '3px 10px' }}>● Активен</span>}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+        {/* SMTP */}
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14, paddingBottom: 8, borderBottom: '2px solid var(--inp-border)' }}>
+            ↗ Отправка (SMTP)
+          </div>
+          {fld('SMTP сервер', 'smtp_host', 'text', 'smtp.yandex.ru')}
+          {fld('Порт', 'smtp_port', 'number', '587')}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+              <input type="checkbox" checked={!!cfg.smtp_use_tls} onChange={e => set('smtp_use_tls', e.target.checked)}
+                style={{ width: 15, height: 15, accentColor: 'var(--primary)' }} />
+              Использовать STARTTLS
+            </label>
+          </div>
+          {fld('Логин (email)', 'smtp_username', 'text', 'you@yandex.ru')}
+          {fld('Пароль приложения', 'smtp_password', 'password', '••••••••••••••••')}
+          {fld('Имя отправителя', 'from_name', 'text', 'CRM RUTEST')}
+          {fld('Email отправителя (если другой)', 'from_email', 'text', 'noreply@company.ru')}
+        </div>
+
+        {/* IMAP */}
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14, paddingBottom: 8, borderBottom: '2px solid var(--inp-border)' }}>
+            ↙ Получение (IMAP)
+          </div>
+          {fld('IMAP сервер', 'imap_host', 'text', 'imap.yandex.ru')}
+          {fld('Порт', 'imap_port', 'number', '993')}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+              <input type="checkbox" checked={!!cfg.imap_use_ssl} onChange={e => set('imap_use_ssl', e.target.checked)}
+                style={{ width: 15, height: 15, accentColor: 'var(--primary)' }} />
+              SSL/TLS
+            </label>
+          </div>
+          {fld('Логин (email)', 'imap_username', 'text', 'you@yandex.ru')}
+          {fld('Пароль приложения', 'imap_password', 'password', '••••••••••••••••')}
+          {fld('Папка входящих', 'imap_folder', 'text', 'INBOX')}
+          {fld('Интервал синхронизации (мин)', 'sync_interval_min', 'number', '5')}
+        </div>
+      </div>
+
+      {/* Яндекс 360 hint */}
+      <div style={{
+        margin: '16px 0', padding: '12px 16px', background: '#fffbeb',
+        border: '1px solid #f6d860', borderRadius: 8, fontSize: 12, color: '#92400e',
+      }}>
+        <b>Яндекс 360:</b> используйте <b>пароль приложения</b> (не основной пароль аккаунта).
+        Создайте его в настройках Яндекс ID → Безопасность → Пароли приложений.
+        SMTP: smtp.yandex.ru:587 STARTTLS | IMAP: imap.yandex.ru:993 SSL
+      </div>
+
+      {/* Buttons */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+        <button onClick={save} disabled={saving} style={{
+          background: 'var(--primary)', color: '#fff', border: 'none',
+          borderRadius: 8, padding: '9px 24px', cursor: saving ? 'not-allowed' : 'pointer',
+          fontSize: 14, fontWeight: 600, opacity: saving ? 0.7 : 1,
+        }}>
+          {saving ? 'Сохранение...' : 'Сохранить'}
+        </button>
+        <button onClick={test} disabled={testing} style={{
+          background: 'none', border: '1px solid var(--inp-border)', borderRadius: 8,
+          padding: '9px 20px', cursor: testing ? 'not-allowed' : 'pointer',
+          fontSize: 14, color: 'var(--text)',
+        }}>
+          {testing ? 'Проверка...' : '🔌 Проверить подключение'}
+        </button>
+      </div>
+
+      {msg && (
+        <div style={{
+          marginTop: 12, padding: '10px 14px', borderRadius: 8, fontSize: 13,
+          background: msg.ok ? '#f0fdf4' : '#fff5f5',
+          border: `1px solid ${msg.ok ? '#86efac' : '#fed7d7'}`,
+          color: msg.ok ? '#166534' : '#c53030',
+        }}>{msg.text}</div>
+      )}
+
+      {testResult && (
+        <div style={{ marginTop: 12, display: 'flex', gap: 10 }}>
+          {[['SMTP', testResult.smtp], ['IMAP', testResult.imap]].map(([name, r]) => (
+            <div key={name} style={{
+              flex: 1, padding: '10px 14px', borderRadius: 8, fontSize: 13,
+              background: r?.ok ? '#f0fdf4' : '#fff5f5',
+              border: `1px solid ${r?.ok ? '#86efac' : '#fed7d7'}`,
+              color: r?.ok ? '#166534' : '#c53030',
+            }}>
+              <b>{name}:</b> {r?.message}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+// ────────────────────────────────────────────────────────────────────────────
+
+const DEV_REF_TREE = [
+  { id:1,  title:'CRM Система',             subs:['Общая информация','Архитектура CRM','Основные модули','Схема работы CRM','Используемые технологии'] },
+  { id:2,  title:'Пользователи и роли',      subs:['Роли пользователей','Права доступа','Матрица доступа','Ограничения ролей','Профили отправителей'] },
+  { id:3,  title:'Каталог товаров',          subs:['Категории товаров','Подкатегории','Карточка товара','Цены','Остатки','Статусы товаров','Импорт товаров','Экспорт товаров'] },
+  { id:4,  title:'Клиенты',                 subs:['Карточка клиента','Контактные лица','История взаимодействий','Документы клиента','Статусы клиентов'] },
+  { id:5,  title:'Сделки',                  subs:['Воронка продаж','Статусы сделок','Автоматизации сделок','Привязка товаров','Коммерческие предложения','Счета','Договоры'] },
+  { id:6,  title:'Объекты строительства',   subs:['Карточка объекта','Адреса объектов','Привязка клиентов','Испытания объекта','Документы объекта'] },
+  { id:7,  title:'Лаборатория',             subs:['Заявки на испытания','Виды испытаний','ГОСТы','Протоколы испытаний','Оборудование','Журнал испытаний','Статусы испытаний'] },
+  { id:8,  title:'Документы',               subs:['Шаблоны документов','Генерация PDF','Коммерческие предложения','Счета','Акты','Договоры','Протоколы'] },
+  { id:9,  title:'Автоматизации',           subs:['Роботы CRM','Триггеры','Уведомления','Cron задачи','Очереди','Email автоматизации','WhatsApp автоматизации'] },
+  { id:10, title:'Интеграции',              subs:['WhatsApp','Telegram','Email','Телефония','1С','API','Webhook'] },
+  { id:11, title:'Финансы',                 subs:['Счета','Оплаты','Себестоимость','Маржинальность','Отчёты'] },
+  { id:12, title:'Склад',                   subs:['Остатки','Движение товаров','Приход','Списание','Резервирование'] },
+  { id:13, title:'Настройки CRM',           subs:['Общие настройки','Настройки уведомлений','Настройки почты','Настройки интеграций','Системные параметры'] },
+  { id:14, title:'Файлы и хранилище',       subs:['Загрузка файлов','Хранение документов','Фото товаров','Архив файлов'] },
+  { id:15, title:'Логи и ошибки',           subs:['Журнал событий','Логи CRM','Ошибки интеграций','Ошибки автоматизаций','Журнал действий пользователей'] },
+  { id:16, title:'Разработка',              subs:['Структура проекта','Frontend','Backend','API endpoints','База данных','Git','Deploy'] },
+  { id:17, title:'База данных',             subs:['Таблицы','Связи таблиц','Основные поля','Миграции'] },
+  { id:18, title:'Частые проблемы',         subs:['CRM не открывается','Не работают уведомления','Ошибки интеграций','Не создаются документы','Не работают роботы'] },
+  { id:19, title:'Идеи и доработки',        subs:['Новые функции','Улучшения интерфейса','Проблемы пользователей','План развития CRM'] },
+]
+
+function PageDevReference({ user }) {
+  const [openSections, setOpenSections] = useState({ 1: true })
+  const [selected, setSelected] = useState({ sectionId: 1, sub: 'Общая информация' })
+
+  const toggleSection = id => setOpenSections(o => ({ ...o, [id]: !o[id] }))
+  const selectSub = (sectionId, sub) => setSelected({ sectionId, sub })
+
+  const section = DEV_REF_TREE.find(s => s.id === selected.sectionId)
+
+  const sideCat = isOpen => ({
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '9px 12px', cursor: 'pointer', borderRadius: 6, marginBottom: 2,
+    fontWeight: 700, fontSize: 13, color: 'var(--text)',
+    background: isOpen ? 'var(--surface2)' : 'transparent', userSelect: 'none',
+  })
+  const sideSub = isSel => ({
+    display: 'flex', alignItems: 'center',
+    padding: '6px 12px 6px 22px', cursor: 'pointer', borderRadius: 5,
+    fontSize: 13, marginBottom: 1, userSelect: 'none',
+    background: isSel ? '#185fa5' : 'transparent',
+    color: isSel ? '#fff' : 'var(--text3)',
+    fontWeight: isSel ? 600 : 400,
+  })
+
+  return (
+    <div style={{ padding: '24px 28px', maxWidth: 1400 }}>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>Справочник разработчика</h2>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text3)' }}>
+          Документация по структуре и логике CRM
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+        {/* Сайдбар */}
+        <div style={{ width: 280, flexShrink: 0, background: 'var(--surface)', borderRadius: 10, padding: '10px 8px', border: '1px solid var(--border2)', alignSelf: 'flex-start' }}>
+          {DEV_REF_TREE.map(sec => (
+            <div key={sec.id}>
+              <div style={sideCat(openSections[sec.id])} onClick={() => toggleSection(sec.id)}>
+                <span>{sec.id}. {sec.title}</span>
+                <span style={{ fontSize: 10, color: 'var(--text3)', display: 'inline-block', transform: openSections[sec.id] ? 'rotate(90deg)' : 'none' }}>▶</span>
+              </div>
+              {openSections[sec.id] && (
+                <div style={{ marginBottom: 4 }}>
+                  {sec.subs.map(sub => (
+                    <div
+                      key={sub}
+                      style={sideSub(selected.sectionId === sec.id && selected.sub === sub)}
+                      onClick={() => selectSub(sec.id, sub)}
+                    >
+                      {sub}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Основная область */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 10, padding: '24px 28px', border: '1px solid var(--border2)', minHeight: 400 }}>
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>
+              {section?.id}. {section?.title}
+            </div>
+            <h3 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>
+              {selected.sub}
+            </h3>
+            {selected.sub === 'Профили отправителей' ? (
+              <SenderProfiles />
+            ) : selected.sub === 'Журнал событий' ? (
+              <PageAuditLog user={user} />
+            ) : selected.sub === 'Настройки почты' ? (
+              <EmailSettings />
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '20px', background: 'var(--surface2)', borderRadius: 8, color: 'var(--text3)', fontSize: 13 }}>
+                <span style={{ fontSize: 24 }}>📝</span>
+                <span>Раздел в разработке. Содержимое будет добавлено позже.</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -2016,6 +2409,14 @@ function PageAuditLog({ user }) {
         </div>
       )}
     </div>
+  )
+}
+
+function PageEmail() {
+  return (
+    <Card title="Почта">
+      <EmailInbox />
+    </Card>
   )
 }
 

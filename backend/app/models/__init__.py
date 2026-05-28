@@ -15,3 +15,5 @@ from app.models.quote import Quote
 from app.models.quote_sender_profile import QuoteSenderProfile
 from app.models.quote_terms_template import QuoteTermsTemplate
 from app.models.commercial_quote import CommercialQuote, CommercialQuoteItem
+from app.models.email_message import EmailMessage
+from app.models.email_settings import EmailSettings

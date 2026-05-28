@@ -125,6 +125,7 @@ def run_sqlite_migrations() -> None:
     _seed_service_catalog()
     _seed_product_catalog()
     _add_asphalt_subcats()
+    _migrate_email_tables()
 
 
 def _seed_service_catalog() -> None:
@@ -466,3 +467,64 @@ def _add_asphalt_subcats() -> None:
                 text("UPDATE products SET category_id = :cid WHERE id = :pid"),
                 {"cid": uz_id, "pid": pid},
             )
+
+
+def _migrate_email_tables() -> None:
+    """Создаёт таблицы email_messages и email_settings если их ещё нет."""
+    insp = inspect(engine)
+    existing_tables = insp.get_table_names()
+
+    with engine.begin() as conn:
+        if "email_settings" not in existing_tables:
+            conn.execute(text("""
+                CREATE TABLE email_settings (
+                    id INTEGER PRIMARY KEY DEFAULT 1,
+                    smtp_host TEXT DEFAULT 'smtp.yandex.ru',
+                    smtp_port INTEGER DEFAULT 587,
+                    smtp_use_tls INTEGER DEFAULT 1,
+                    smtp_username TEXT,
+                    smtp_password TEXT,
+                    from_name TEXT DEFAULT 'CRM RUTEST',
+                    from_email TEXT,
+                    imap_host TEXT DEFAULT 'imap.yandex.ru',
+                    imap_port INTEGER DEFAULT 993,
+                    imap_use_ssl INTEGER DEFAULT 1,
+                    imap_username TEXT,
+                    imap_password TEXT,
+                    imap_folder TEXT DEFAULT 'INBOX',
+                    sync_interval_min INTEGER DEFAULT 5,
+                    is_enabled INTEGER DEFAULT 0
+                )
+            """))
+            conn.execute(text("INSERT INTO email_settings (id) VALUES (1)"))
+
+        if "email_messages" not in existing_tables:
+            conn.execute(text("""
+                CREATE TABLE email_messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    message_uid TEXT,
+                    message_id_hdr TEXT,
+                    thread_id TEXT,
+                    direction TEXT NOT NULL DEFAULT 'in',
+                    from_email TEXT,
+                    from_name TEXT,
+                    to_email TEXT,
+                    cc_email TEXT,
+                    subject TEXT,
+                    body_text TEXT,
+                    body_html TEXT,
+                    attachments_json TEXT,
+                    sent_at DATETIME,
+                    received_at DATETIME,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    is_read INTEGER NOT NULL DEFAULT 0,
+                    is_deleted INTEGER NOT NULL DEFAULT 0,
+                    linked_request_id INTEGER REFERENCES requests(id) ON DELETE SET NULL,
+                    linked_client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_messages_direction ON email_messages(direction)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_messages_from_email ON email_messages(from_email)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_messages_thread_id ON email_messages(thread_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_messages_linked_request_id ON email_messages(linked_request_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_messages_linked_client_id ON email_messages(linked_client_id)"))
