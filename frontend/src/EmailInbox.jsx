@@ -122,7 +122,7 @@ function ThreadPane({ message, allMessages, onClose, onReply, onDelete }) {
       </div>
 
       {/* Messages scroll */}
-      <div ref={bodyRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div ref={bodyRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {loading ? (
           <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 40 }}>Загрузка...</div>
         ) : msgs.map((m, idx) => (
@@ -428,7 +428,7 @@ function FolderTree({ active, onSelect, counts, onCompose }) {
       </div>
 
       {/* Folders */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 6px' }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 6px' }}>
         {FOLDERS.map(f => {
           const cnt = counts[f.id] || 0
           const isActive = active === f.id
@@ -697,7 +697,7 @@ export default function EmailInbox({ clientId, requestId, compact = false }) {
   )
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 80px)', minHeight: 0, overflow: 'hidden', borderRadius: 10, border: '1px solid var(--inp-border)', background: 'var(--surface)' }}>
+    <div style={{ display: 'flex', height: '100%', minHeight: 0, overflow: 'hidden', background: 'var(--surface)', borderTop: '1px solid var(--inp-border)' }}>
       {/* Left: folder tree */}
       <FolderTree
         active={folder}
@@ -707,13 +707,13 @@ export default function EmailInbox({ clientId, requestId, compact = false }) {
       />
 
       {/* Middle: message list */}
-      <div style={{ width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--inp-border)', minHeight: 0 }}>
+      <div style={{ width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--inp-border)', minHeight: 0, overflow: 'hidden' }}>
         <ListToolbar
           folder={folder} total={total} unread={unreadCount}
           search={search} onSearch={setSearch}
           onSync={handleSync} syncing={syncing} syncMsg={syncMsg}
         />
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {loading ? (
             <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 40, fontSize: 13 }}>Загрузка...</div>
           ) : messages.length === 0 ? (

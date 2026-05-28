@@ -2413,8 +2413,9 @@ function PageAuditLog({ user }) {
 }
 
 function PageEmail() {
+  // Сдвигаем на padding main'а (1.5rem = 24px), чтобы inbox занял весь экран без лишних отступов
   return (
-    <div style={{ padding: '16px 20px' }}>
+    <div style={{ margin: '-1.5rem', height: 'calc(100vh - 3rem)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <EmailInbox />
     </div>
   )
