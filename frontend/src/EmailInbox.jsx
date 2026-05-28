@@ -174,14 +174,13 @@ function ThreadPane({ message, allMessages, onClose, onReply, onDelete }) {
       </div>
 
       {/* Messages scroll */}
-      <div ref={bodyRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div ref={bodyRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px' }}>
         {loading ? (
           <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 40 }}>Загрузка...</div>
         ) : msgs.map((m, idx) => (
           <MessageCard
             key={m.id}
             m={m}
-            // Последнее письмо раскрыто, остальные свёрнуты
             defaultOpen={idx === msgs.length - 1}
           />
         ))}
@@ -208,6 +207,7 @@ function MessageCard({ m, defaultOpen }) {
 
   return (
     <div style={{
+      display: 'block', width: '100%', marginBottom: 8,
       border: '1px solid var(--inp-border)', borderRadius: 10,
       background: 'var(--surface)', overflow: 'hidden',
       boxShadow: open ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
@@ -216,8 +216,9 @@ function MessageCard({ m, defaultOpen }) {
       <div
         onClick={() => setOpen(o => !o)}
         style={{
-          padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10,
-          cursor: 'pointer',
+          padding: '10px 14px',
+          display: 'flex', alignItems: 'center', gap: 10,
+          cursor: 'pointer', minHeight: 52,
           background: open ? 'var(--surface)' : 'var(--surface2)',
           transition: 'background .1s',
         }}
