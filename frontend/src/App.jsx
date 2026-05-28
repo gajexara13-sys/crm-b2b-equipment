@@ -2414,9 +2414,9 @@ function PageAuditLog({ user }) {
 
 function PageEmail() {
   return (
-    <Card title="Почта">
+    <div style={{ padding: '16px 20px' }}>
       <EmailInbox />
-    </Card>
+    </div>
   )
 }
 

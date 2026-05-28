@@ -170,3 +170,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* ---- page transition ---- */
 main > * { transition: background .25s, color .25s, border-color .25s; }
 
+/* ---- spin animation for email sync ---- */
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
