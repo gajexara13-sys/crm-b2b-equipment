@@ -14,17 +14,12 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-echo "▶ Получение свежей версии из git…"
-sudo -u crm git fetch --all --prune
-sudo -u crm git reset --hard origin/main
-
 echo "▶ Обновление python-зависимостей…"
 sudo -u crm "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/backend/requirements.txt"
 
 echo "▶ Пересборка фронтенда…"
 cd "$INSTALL_DIR/frontend"
-# Сбрасываем права на dist чтобы пользователь crm мог пересобрать
-[ -d dist ] && chown -R crm:crm dist
+rm -rf dist
 sudo -u crm npm install --no-audit --no-fund
 sudo -u crm npm run build
 
