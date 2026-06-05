@@ -1,0 +1,299 @@
+{
+  "boards": [
+    {
+      "id": "sales",
+      "name": "Продажи",
+      "description": "Воронка продаж — зона ответственности менеджера",
+      "owner_role": "sales_manager",
+      "stages": [
+        {
+          "id": "new",
+          "name": "Новый запрос",
+          "position": 1,
+          "color": "gray",
+          "type": "initial",
+          "sla_days": 1,
+          "required_fields_on_enter": [],
+          "required_fields_on_exit": [
+            "contact_name",
+            "company",
+            "source"
+          ]
+        },
+        {
+          "id": "qualification",
+          "name": "Квалификация",
+          "position": 2,
+          "color": "indigo",
+          "type": "active",
+          "sla_days": 2,
+          "required_fields_on_enter": [],
+          "required_fields_on_exit": [
+            "budget",
+            "decision_maker",
+            "need_confirmed"
+          ],
+          "note": "BANT-проверка перед передачей инженерам"
+        },
+        {
+          "id": "specification",
+          "name": "Подбор / ТЗ",
+          "position": 3,
+          "color": "blue",
+          "type": "active",
+          "sla_days": 5,
+          "required_fields_on_enter": [],
+          "required_fields_on_exit": [
+            "assigned_engineer",
+            "equipment_model"
+          ]
+        },
+        {
+          "id": "quote-sent",
+          "name": "КП отправлено",
+          "position": 4,
+          "color": "cyan",
+          "type": "active",
+          "sla_days": 5,
+          "required_fields_on_enter": [
+            "quote_amount",
+            "quote_document"
+          ],
+          "required_fields_on_exit": [],
+          "auto_reminder_days": 3
+        },
+        {
+          "id": "negotiation",
+          "name": "Переговоры",
+          "position": 5,
+          "color": "amber",
+          "type": "active",
+          "sla_days": 10,
+          "required_fields_on_enter": [],
+          "required_fields_on_exit": [],
+          "escalate_to_rop_after_days": 10
+        },
+        {
+          "id": "contract",
+          "name": "Договор",
+          "position": 6,
+          "color": "emerald",
+          "type": "active",
+          "sla_days": 5,
+          "required_fields_on_enter": [],
+          "required_fields_on_exit": [
+            "contract_number",
+            "contract_date"
+          ]
+        },
+        {
+          "id": "invoice",
+          "name": "Оплата",
+          "position": 7,
+          "color": "violet",
+          "type": "active",
+          "sla_days": 14,
+          "required_fields_on_enter": [
+            "invoice_amount"
+          ],
+          "required_fields_on_exit": [
+            "payment_confirmed_date"
+          ]
+        },
+        {
+          "id": "transferred",
+          "name": "Передан в производство",
+          "position": 8,
+          "color": "teal",
+          "type": "handoff",
+          "sla_days": null,
+          "required_fields_on_enter": [],
+          "required_fields_on_exit": [],
+          "trigger": "create_operations_card",
+          "note": "При переводе в этот статус автоматически создаётся карточка на доске 'Исполнение'"
+        },
+        {
+          "id": "lost",
+          "name": "Отказ / Проигрыш",
+          "position": 9,
+          "color": "red",
+          "type": "terminal_lost",
+          "sla_days": null,
+          "required_fields_on_enter": [
+            "lost_reason"
+          ],
+          "required_fields_on_exit": [],
+          "lost_reason_options": [
+            "Цена",
+            "Сроки",
+            "Проигрыш тендеру",
+            "Ушёл к конкуренту",
+            "Нет бюджета",
+            "Нет потребности",
+            "Не выходит на связь",
+            "Другое"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "name": "Исполнение",
+      "description": "Операционная доска — логистика, склад, метрология",
+      "owner_role": "operations_manager",
+      "created_from": "sales",
+      "created_from_trigger": "transferred",
+      "stages": [
+        {
+          "id": "china-ordered",
+          "name": "Заказ размещён",
+          "position": 1,
+          "color": "orange",
+          "type": "active",
+          "sla_days": null,
+          "required_fields_on_enter": [
+            "supplier",
+            "expected_production_date"
+          ]
+        },
+        {
+          "id": "in-production",
+          "name": "В производстве",
+          "position": 2,
+          "color": "amber",
+          "type": "active",
+          "sla_days": null,
+          "required_fields_on_enter": []
+        },
+        {
+          "id": "importing",
+          "name": "В пути (импорт / таможня)",
+          "position": 3,
+          "color": "yellow",
+          "type": "active",
+          "sla_days": null,
+          "required_fields_on_enter": [
+            "tracking_number",
+            "expected_arrival_date"
+          ]
+        },
+        {
+          "id": "stock-entry",
+          "name": "На складе — приёмка",
+          "position": 4,
+          "color": "lime",
+          "type": "active",
+          "sla_days": 3,
+          "required_fields_on_enter": [],
+          "required_fields_on_exit": [
+            "stock_confirmed"
+          ]
+        },
+        {
+          "id": "metrology",
+          "name": "Поверка / аттестация",
+          "position": 5,
+          "color": "blue",
+          "type": "active",
+          "sla_days": 10,
+          "required_fields_on_enter": [],
+          "required_fields_on_exit": [
+            "metrology_certificate"
+          ],
+          "note": "Критичный этап для лабораторного оборудования — блокирует отгрузку"
+        },
+        {
+          "id": "ready-to-ship",
+          "name": "Готов к отгрузке",
+          "position": 6,
+          "color": "emerald",
+          "type": "active",
+          "sla_days": 5,
+          "required_fields_on_enter": []
+        },
+        {
+          "id": "delivering-install",
+          "name": "Доставка / монтаж",
+          "position": 7,
+          "color": "cyan",
+          "type": "active",
+          "sla_days": 14,
+          "required_fields_on_enter": [
+            "delivery_date",
+            "installation_engineer"
+          ]
+        },
+        {
+          "id": "docs-waiting",
+          "name": "Закрывающие документы",
+          "position": 8,
+          "color": "violet",
+          "type": "active",
+          "sla_days": 14,
+          "required_fields_on_enter": [],
+          "required_fields_on_exit": [
+            "closing_docs_received"
+          ]
+        },
+        {
+          "id": "complete",
+          "name": "Выполнен",
+          "position": 9,
+          "color": "teal",
+          "type": "terminal_won",
+          "sla_days": null,
+          "required_fields_on_enter": [
+            "closing_docs_received"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aftersales",
+      "name": "Постпродажное",
+      "description": "Рекламации и возвраты — отдельный модуль, не воронка продаж",
+      "owner_role": "support_manager",
+      "stages": [
+        {
+          "id": "claim-new",
+          "name": "Новая рекламация",
+          "position": 1,
+          "color": "red",
+          "type": "initial",
+          "required_fields_on_enter": [
+            "linked_deal_id",
+            "claim_description"
+          ]
+        },
+        {
+          "id": "claim-review",
+          "name": "Рассмотрение",
+          "position": 2,
+          "color": "orange",
+          "type": "active",
+          "sla_days": 5
+        },
+        {
+          "id": "claim-resolved",
+          "name": "Решена",
+          "position": 3,
+          "color": "teal",
+          "type": "terminal_won",
+          "required_fields_on_enter": [
+            "resolution_description"
+          ]
+        },
+        {
+          "id": "return",
+          "name": "Возврат",
+          "position": 4,
+          "color": "rose",
+          "type": "terminal_lost",
+          "required_fields_on_enter": [
+            "return_reason"
+          ]
+        }
+      ]
+    }
+  ]
+}
