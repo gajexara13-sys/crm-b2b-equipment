@@ -52,6 +52,13 @@ function dfltDue(){
 }
 const TASK_LABELS={call:'Звонок',kp:'Отправка КП',meeting:'Встреча',payment:'Контроль оплаты'}
 
+function parseUTC(s){
+  if(!s) return null
+  if(typeof s==='number') return new Date(s)
+  if(s.endsWith('Z')||s.includes('+')||/[T ]\d\d:\d\d:\d\d-\d\d/.test(s)) return new Date(s)
+  return new Date(s.replace(' ','T')+'Z')
+}
+
 function getStageCfg(boardId,stageId){
   const b=boardsConfig.boards.find(x=>x.id===boardId)
   return b?b.stages.find(s=>s.id===stageId)||null:null
@@ -102,17 +109,6 @@ function buildClientMsg(req,stageId,client){
     'in-production':`Ваш заказ ${num} принят в производство у поставщика.`+(ex.expected_production_date?`
 Ожидаемая дата готовности: ${ex.expected_production_date}.`:''),
     'importing':`Ваш заказ ${num} отгружен поставщиком и находится в пути.`+(ex.tracking_number?`
-
-// Парсим дату как UTC: если строка без зоны — добавляем Z
-function parseUTC(s) {
-  if (!s) return null
-  if (typeof s === 'number') return new Date(s)
-  // Уже содержит смещение — парсим как есть
-  if (s.endsWith('Z') || s.includes('+') || /[T ]\d\d:\d\d:\d\d-\d\d/.test(s)) return new Date(s)
-  // Naive строка (без зоны) — трактуем как UTC
-  return new Date(s.replace(' ', 'T') + 'Z')
-}
-
 Трек-номер отслеживания: ${ex.tracking_number}.`:'')+(ex.expected_arrival_date?`
 Ожидаемая дата прибытия: ${ex.expected_arrival_date}.`:''),
     'stock-entry':`Ваш заказ ${num} прибыл на наш склад и проходит входной контроль качества.
@@ -456,8 +452,8 @@ export default function PageFunnel({user}){
                         </div>
                       </div>
                       <div style={{fontSize:11,color:'var(--text3)',marginBottom:3}}>{cName(r.client_id)}</div>
-                      {r.material_type&&<div style={{fontSize:10,color:'var(--text4)',background:'var(--surface2)',borderRadius:4,padding:'1px 6px',display:'inline-block',marginBottom:3}}>{r.material_type}</div>}
-                      {r.price&&<div style={{fontSize:11,fontWeight:600,color:'var(--primary)'}}>{Number(r.price).toLocaleString('ru')} ₽</div>}
+                      {r.material_type&&<div style={{fontSize:10,color:'var(--text4)',background:'var(--surface2)',borderRadius:4,padding:'1px 6px',marginBottom:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.material_type}</div>}
+                      <div style={{fontSize:11,fontWeight:600,color:r.price?'var(--primary)':'var(--text5)'}}>{r.price?Number(r.price).toLocaleString('ru')+' ₽':'—'}</div>
                       {r.lost_reason&&<div style={{fontSize:9,color:'#dc2626',marginTop:2}}>✗ {r.lost_reason}</div>}
                       {dueDate&&(
                         <div style={{fontSize:10,marginTop:3,
