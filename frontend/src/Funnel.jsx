@@ -248,8 +248,8 @@ export default function PageFunnel({user}){
                       {status==='today'&&<span style={{fontSize:9,fontWeight:700,color:'#854d0e',background:'#fef9c3',borderRadius:4,padding:'1px 5px',whiteSpace:'nowrap',marginLeft:4}}>СЕГОДНЯ</span>}
                     </div>
                     <div style={{fontSize:11,color:'var(--text3)',marginBottom:4}}>{cName(r.client_id)}</div>
-                    {r.material_type&&<div style={{fontSize:10,color:'var(--text4)',background:'var(--surface2)',borderRadius:4,padding:'1px 6px',display:'inline-block',marginBottom:3}}>{r.material_type}</div>}
-                    {r.price&&<div style={{fontSize:11,fontWeight:600,color:'var(--primary)'}}>{Number(r.price).toLocaleString('ru')} ₽</div>}
+                    {r.material_type&&<div style={{fontSize:10,color:'var(--text4)',background:'var(--surface2)',borderRadius:4,padding:'1px 6px',marginBottom:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.material_type}</div>}
+                    <div style={{fontSize:11,fontWeight:600,color:r.price?'var(--primary)':'var(--text5)'}}>{r.price?Number(r.price).toLocaleString('ru')+' ₽':'—'}</div>
                     {dueDate&&(
                       <div style={{fontSize:10,marginTop:3,
                         color:status==='overdue'?'#c2410c':status==='today'?'#854d0e':'var(--text3)'}}>
