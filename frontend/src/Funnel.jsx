@@ -169,6 +169,7 @@ export default function PageFunnel({user}){
   const [sel,setSel]=useState(null)
   const [selTasks,setSelTasks]=useState([])
   const [selQuotes,setSelQuotes]=useState([])
+  const [allQuotes,setAllQuotes]=useState([])
   const [newTask,setNewTask]=useState({task_type:'call',due_at:dfltDue(),note:''})
   const [taskErr,setTaskErr]=useState('')
   const [stageModal,setStageModal]=useState(null)
@@ -183,6 +184,7 @@ export default function PageFunnel({user}){
   const load=()=>{
     api.get('/requests').then(r=>setReqs(r.data)).catch(()=>{})
     api.get('/clients').then(r=>setClients(r.data)).catch(()=>{})
+    api.get('/crm/quotes').then(r=>setAllQuotes(r.data||[])).catch(()=>{})
   }
   useEffect(()=>{load()},[])
   // Автообновление доски каждые 60 секунд (новые заявки из почты)
@@ -192,6 +194,16 @@ export default function PageFunnel({user}){
   },[])
 
   const cName=id=>{const c=clients.find(x=>x.id===id);return c?c.name:('ID '+id)}
+
+  const cardAmount=r=>{
+    const quotes=allQuotes.filter(q=>q.request_id===r.id&&(q.total_with_vat||q.total))
+    if(quotes.length>0){
+      const last=quotes[quotes.length-1]
+      return {amount:Number(last.total_with_vat||last.total),isQuote:true}
+    }
+    if(r.price) return {amount:Number(r.price),isQuote:false}
+    return null
+  }
 
   const boardCards=useMemo(()=>reqs.filter(r=>(r.board_id||'sales')===boardId),[reqs,boardId])
 
@@ -453,7 +465,10 @@ export default function PageFunnel({user}){
                       </div>
                       <div style={{fontSize:11,color:'var(--text3)',marginBottom:3}}>{cName(r.client_id)}</div>
                       {r.material_type&&<div style={{fontSize:10,color:'var(--text4)',background:'var(--surface2)',borderRadius:4,padding:'1px 6px',marginBottom:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.material_type}</div>}
-                      <div style={{fontSize:11,fontWeight:600,color:r.price?'var(--primary)':'var(--text5)'}}>{r.price?Number(r.price).toLocaleString('ru')+' ₽':'—'}</div>
+                      {(()=>{const ca=cardAmount(r);return ca
+                        ?<div style={{fontSize:11,fontWeight:600,color:'var(--primary)'}}>{ca.amount.toLocaleString('ru')} ₽{ca.isQuote&&<span style={{fontSize:9,color:'var(--text4)',fontWeight:400,marginLeft:3}}>КП</span>}</div>
+                        :<div style={{fontSize:11,fontWeight:600,color:'var(--text5)'}}>—</div>
+                      })()}
                       {r.lost_reason&&<div style={{fontSize:9,color:'#dc2626',marginTop:2}}>✗ {r.lost_reason}</div>}
                       {dueDate&&(
                         <div style={{fontSize:10,marginTop:3,
