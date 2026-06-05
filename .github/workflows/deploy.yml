@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'claude/**'
 
 jobs:
   deploy:
@@ -17,6 +18,7 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
             cd /opt/crm
+            BRANCH="${{ github.ref_name }}"
             sudo -u crm git fetch --all --prune
-            sudo -u crm git reset --hard origin/main
+            sudo -u crm git reset --hard origin/$BRANCH
             bash deploy/deploy.sh
