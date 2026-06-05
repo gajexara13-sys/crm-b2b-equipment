@@ -23,6 +23,8 @@ sudo -u crm "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/backend/require
 
 echo "▶ Пересборка фронтенда…"
 cd "$INSTALL_DIR/frontend"
+# Сбрасываем права на dist чтобы пользователь crm мог пересобрать
+[ -d dist ] && chown -R crm:crm dist
 sudo -u crm npm install --no-audit --no-fund
 sudo -u crm npm run build
 
