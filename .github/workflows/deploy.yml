@@ -16,4 +16,7 @@ jobs:
           username: root
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
-            cd /opt/crm && bash deploy/deploy.sh
+            cd /opt/crm
+            sudo -u crm git fetch --all --prune
+            sudo -u crm git reset --hard origin/main
+            bash deploy/deploy.sh
