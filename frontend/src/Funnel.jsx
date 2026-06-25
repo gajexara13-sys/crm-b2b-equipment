@@ -418,8 +418,8 @@ export default function PageFunnel({user}){
       {/* Top mirror scrollbar */}
       <div ref={kanbanTopRef}
         onScroll={()=>{if(kanbanBotRef.current)kanbanBotRef.current.scrollLeft=kanbanTopRef.current.scrollLeft}}
-        style={{overflowX:'auto',overflowY:'hidden',height:14,marginBottom:2}}>
-        <div id="kanban-width-probe" style={{height:1}}/>
+        style={{overflowX:'scroll',overflowY:'hidden',height:16,marginBottom:4,flexShrink:0}}>
+        <div id="kanban-width-probe" style={{height:1,minWidth:'100%'}}/>
       </div>
 
       {/* Kanban */}
