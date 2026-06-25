@@ -182,7 +182,7 @@ main > * { transition: background .25s, color .25s, border-color .25s; }
   margin-bottom: 3px;
 }
 .kanban-top-scroll::-webkit-scrollbar { height: 8px; }
-.kanban-top-scroll::-webkit-scrollbar-track { background: var(--surface2); border-radius: 4px; }
+.kanban-top-scroll::-webkit-scrollbar-track { background: transparent; }
 .kanban-top-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
 .kanban-top-scroll::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
