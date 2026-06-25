@@ -173,3 +173,15 @@ main > * { transition: background .25s, color .25s, border-color .25s; }
 /* ---- spin animation for email sync ---- */
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+
+/* ---- kanban top scrollbar ---- */
+.kanban-top-scroll {
+  overflow-x: scroll;
+  overflow-y: hidden;
+  height: 17px;
+  margin-bottom: 3px;
+}
+.kanban-top-scroll::-webkit-scrollbar { height: 8px; }
+.kanban-top-scroll::-webkit-scrollbar-track { background: var(--surface2); border-radius: 4px; }
+.kanban-top-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+.kanban-top-scroll::-webkit-scrollbar-thumb:hover { background: #64748b; }

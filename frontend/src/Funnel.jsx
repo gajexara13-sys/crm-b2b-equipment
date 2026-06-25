@@ -412,9 +412,8 @@ export default function PageFunnel({user}){
       </div>
 
       {/* Top scrollbar */}
-      <div ref={topScrollRef}
-        onScroll={()=>{if(botScrollRef.current)botScrollRef.current.scrollLeft=topScrollRef.current.scrollLeft}}
-        style={{overflowX:'scroll',overflowY:'hidden',height:17,marginBottom:2}}>
+      <div ref={topScrollRef} className="kanban-top-scroll"
+        onScroll={()=>{if(botScrollRef.current)botScrollRef.current.scrollLeft=topScrollRef.current.scrollLeft}}>
         <div ref={probeRef} style={{height:1,width:'100%'}}/>
       </div>
 
