@@ -425,13 +425,13 @@ export default function PageFunnel({user}){
         <div style={{height:1,width:'100%'}}/>
       </div>
 
-      {/* Kanban — native scrollbar hidden, driven by top+bottom sticky bars */}
+      {/* Kanban */}
       <div ref={botScrollRef}
         onScroll={()=>{
           if(topScrollRef.current)topScrollRef.current.scrollLeft=botScrollRef.current.scrollLeft
           if(stickyScrollRef.current)stickyScrollRef.current.scrollLeft=botScrollRef.current.scrollLeft
         }}
-        style={{display:'flex',gap:10,overflowX:'auto',paddingBottom:4,alignItems:'flex-start',scrollbarWidth:'none',msOverflowStyle:'none'}}>
+        style={{display:'flex',gap:10,overflowX:'auto',paddingBottom:12,alignItems:'flex-start'}}>
         {activeBoard.stages.map(stage=>{
           const ci=COLOR_MAP[stage.color]||COLOR_MAP.blue
           const cards=stageCards(stage.id)
