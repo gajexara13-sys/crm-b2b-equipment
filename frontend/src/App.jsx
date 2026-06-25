@@ -209,7 +209,7 @@ function Layout({ user, onLogout }) {
         </div>
         <button onClick={onLogout} style={{margin:'0 1.25rem 1.5rem',background:'transparent',border:'1px solid var(--aside-border)',color:'var(--aside-text)',padding:'6px 12px',borderRadius:4,fontSize:11,fontWeight:500,cursor:'pointer'}}>Выйти</button>
       </aside>
-      <main style={{flex:1,padding:'1.5rem',overflowY:'auto',background:'var(--bg)',transition:'background .25s'}}>
+      <main style={{flex:1,padding:'1.5rem',overflowY:'auto',background:'var(--bg)',transition:'background .25s',display:'flex',flexDirection:'column'}}>
         <Routes>
           <Route path="/catalog-products" element={<ProductCatalog />} />
           <Route path="/quotes" element={<CommercialOffers />} />
