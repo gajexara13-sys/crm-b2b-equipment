@@ -363,7 +363,7 @@ export default function PageFunnel({user}){
   if(!activeBoard) return <div>Доска не найдена</div>
 
   return(
-    <div style={{fontFamily:'-apple-system,sans-serif'}}>
+    <div style={{fontFamily:'-apple-system,sans-serif',display:'flex',flexDirection:'column',height:'100%'}}>
       {/* Header */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
         <div>
@@ -420,7 +420,9 @@ export default function PageFunnel({user}){
       {/* Kanban */}
       <div ref={botScrollRef}
         onScroll={()=>{if(topScrollRef.current)topScrollRef.current.scrollLeft=botScrollRef.current.scrollLeft}}
-        style={{display:'flex',gap:10,overflowX:'auto',paddingBottom:12,alignItems:'flex-start'}}>
+        style={{display:'flex',gap:10,overflowX:'auto',overflowY:'auto',
+          flex:1,minHeight:0,alignItems:'flex-start',
+          scrollbarWidth:'thin',scrollbarColor:'#94a3b8 var(--surface2)'}}>
         {activeBoard.stages.map(stage=>{
           const ci=COLOR_MAP[stage.color]||COLOR_MAP.blue
           const cards=stageCards(stage.id)
