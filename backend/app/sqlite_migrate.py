@@ -43,6 +43,7 @@ def run_sqlite_migrations() -> None:
             ("contact_name", "ALTER TABLE requests ADD COLUMN contact_name TEXT"),
             ("source", "ALTER TABLE requests ADD COLUMN source TEXT"),
             ("request_kind", "ALTER TABLE requests ADD COLUMN request_kind TEXT DEFAULT 'product'"),
+            ("board_id", "ALTER TABLE requests ADD COLUMN board_id TEXT DEFAULT 'sales'"),
         ],
     )
 

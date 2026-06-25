@@ -18,7 +18,7 @@ class Request(Base):
     assigned_to   = Column(Integer, ForeignKey("users.id"))
     notes         = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    stage       = Column(String, default="new_request")
+    stage       = Column(String, default="new")
     contact_name = Column(String)
     source = Column(String)
     material_category_id = Column(Integer, ForeignKey("material_categories.id"))
@@ -26,3 +26,4 @@ class Request(Base):
     material_variant = Column(String)
     selected_price_position_ids_json = Column(Text)
     selected_indicator_ids_json = Column(Text)
+    board_id = Column(String, default="sales")
