@@ -528,7 +528,7 @@ export default function PageFunnel({user}){
       <div ref={stickyScrollRef}
         onScroll={()=>{if(botScrollRef.current)botScrollRef.current.scrollLeft=stickyScrollRef.current.scrollLeft}}
         className="kanban-top-scroll"
-        style={{position:'fixed',bottom:0,left:210,right:0,zIndex:10,background:'var(--bg)',padding:'0 1.5rem',boxShadow:'0 -1px 4px rgba(0,0,0,0.08)'}}>
+        style={{position:'fixed',bottom:0,left:210,right:0,zIndex:10,padding:'0 1.5rem'}}>
         <div style={{height:1,width:'100%'}}/>
       </div>
       {/* space so content isn't hidden behind fixed bar */}
