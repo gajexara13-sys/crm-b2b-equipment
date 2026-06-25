@@ -193,12 +193,18 @@ export default function PageFunnel({user}){
   // Sync top scrollbar width with kanban inner width
   useEffect(()=>{
     const bot=kanbanBotRef.current
-    if(!bot) return
+    const top=kanbanTopRef.current
+    if(!bot||!top) return
     const probe=document.getElementById('kanban-width-probe')
-    const update=()=>{if(probe) probe.style.width=bot.scrollWidth+'px'}
+    const update=()=>{
+      const w=bot.scrollWidth
+      if(probe) probe.style.width=w+'px'
+    }
     update()
     const ro=new ResizeObserver(update)
     ro.observe(bot)
+    // also observe each child column
+    Array.from(bot.children).forEach(c=>ro.observe(c))
     return ()=>ro.disconnect()
   })
 
@@ -418,8 +424,8 @@ export default function PageFunnel({user}){
       {/* Top mirror scrollbar */}
       <div ref={kanbanTopRef}
         onScroll={()=>{if(kanbanBotRef.current)kanbanBotRef.current.scrollLeft=kanbanTopRef.current.scrollLeft}}
-        style={{overflowX:'scroll',overflowY:'hidden',height:16,marginBottom:4,flexShrink:0}}>
-        <div id="kanban-width-probe" style={{height:1,minWidth:'100%'}}/>
+        style={{overflowX:'scroll',overflowY:'hidden',height:20,marginBottom:4}}>
+        <div id="kanban-width-probe" style={{height:1,width:'100%'}}/>
       </div>
 
       {/* Kanban */}
