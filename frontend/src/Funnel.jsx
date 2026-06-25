@@ -166,10 +166,8 @@ export default function PageFunnel({user}){
   const [clients,setClients]=useState([])
   const [drag,setDrag]=useState(null)
   const [over,setOver]=useState(null)
-  const topScrollRef=useRef(null)
   const botScrollRef=useRef(null)
   const stickyScrollRef=useRef(null)
-  const probeRef=useRef(null)
   const [sel,setSel]=useState(null)
   const [selTasks,setSelTasks]=useState([])
   const [selQuotes,setSelQuotes]=useState([])
@@ -194,16 +192,11 @@ export default function PageFunnel({user}){
 
   useLayoutEffect(()=>{
     const bot=botScrollRef.current
-    const probe=probeRef.current
-    if(!bot||!probe) return
-    const w=bot.scrollWidth+'px'
-    probe.style.width=w
-    // sync sticky scrollbar probe too
     const sticky=stickyScrollRef.current
-    if(sticky){
-      const sp=sticky.firstElementChild
-      if(sp) sp.style.width=w
-    }
+    if(!bot||!sticky) return
+    const w=bot.scrollWidth+'px'
+    const sp=sticky.firstElementChild
+    if(sp) sp.style.width=w
   })
 
   // Автообновление доски каждые 60 секунд (новые заявки из почты)
@@ -419,19 +412,11 @@ export default function PageFunnel({user}){
         })}
       </div>
 
-      {/* Top scrollbar */}
-      <div ref={topScrollRef} className="kanban-top-scroll"
-        onScroll={()=>{if(botScrollRef.current)botScrollRef.current.scrollLeft=topScrollRef.current.scrollLeft}}>
-        <div style={{height:1,width:'100%'}}/>
-      </div>
-
-      {/* Kanban */}
+      {/* Kanban — native scrollbar hidden, sticky scrollbar below */}
       <div ref={botScrollRef}
-        onScroll={()=>{
-          if(topScrollRef.current)topScrollRef.current.scrollLeft=botScrollRef.current.scrollLeft
-          if(stickyScrollRef.current)stickyScrollRef.current.scrollLeft=botScrollRef.current.scrollLeft
-        }}
-        style={{display:'flex',gap:10,overflowX:'auto',paddingBottom:12,alignItems:'flex-start'}}>
+        onScroll={()=>{if(stickyScrollRef.current)stickyScrollRef.current.scrollLeft=botScrollRef.current.scrollLeft}}
+        className="kanban-no-scrollbar"
+        style={{display:'flex',gap:10,overflowX:'auto',paddingBottom:4,alignItems:'flex-start'}}>
         {activeBoard.stages.map(stage=>{
           const ci=COLOR_MAP[stage.color]||COLOR_MAP.blue
           const cards=stageCards(stage.id)
@@ -541,9 +526,9 @@ export default function PageFunnel({user}){
 
       {/* Sticky bottom scrollbar */}
       <div ref={stickyScrollRef}
-        onScroll={()=>{if(botScrollRef.current)botScrollRef.current.scrollLeft=stickyScrollRef.current.scrollLeft;if(topScrollRef.current)topScrollRef.current.scrollLeft=stickyScrollRef.current.scrollLeft}}
+        onScroll={()=>{if(botScrollRef.current)botScrollRef.current.scrollLeft=stickyScrollRef.current.scrollLeft}}
         className="kanban-top-scroll"
-        style={{position:'sticky',bottom:0,zIndex:10,background:'var(--bg)',marginTop:4}}>
+        style={{position:'sticky',bottom:0,zIndex:10,background:'var(--bg)',marginTop:2}}>
         <div style={{height:1,width:'100%'}}/>
       </div>
 
