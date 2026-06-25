@@ -38,6 +38,7 @@ class RequestIn(BaseModel):
     material_variant: Optional[str] = None
     selected_price_position_ids: Optional[List[int]] = None
     selected_indicator_ids: Optional[List[int]] = None
+    board_id: Optional[str] = None
 
 
 class StageBody(BaseModel):
@@ -270,7 +271,7 @@ def update_stage(
     r = db.query(Request).filter(Request.id == id).first()
     if not r:
         raise HTTPException(404, "Заявка не найдена")
-    old = r.stage or "new_request"
+    old = r.stage or "new"
     new = body.stage
     if new != old and user.role in ("manager", "sales"):
         has_open = (
@@ -289,6 +290,9 @@ def update_stage(
                 "(звонок, отправка КП, встреча, контроль оплаты).",
             )
     r.stage = new
+    if new == "transferred":
+        r.board_id = "operations"
+        r.stage = "china-ordered"
     db.commit()
     db.refresh(r)
     out = _serialize_request_row(
