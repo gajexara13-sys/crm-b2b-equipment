@@ -1,4 +1,4 @@
-import React,{useState,useEffect,useMemo,useRef} from 'react'
+import React,{useState,useEffect,useLayoutEffect,useMemo,useRef} from 'react'
 import axios from 'axios'
 import {useNavigate} from 'react-router-dom'
 import Modal from './Modal'
@@ -166,6 +166,9 @@ export default function PageFunnel({user}){
   const [clients,setClients]=useState([])
   const [drag,setDrag]=useState(null)
   const [over,setOver]=useState(null)
+  const topScrollRef=useRef(null)
+  const botScrollRef=useRef(null)
+  const probeRef=useRef(null)
   const [sel,setSel]=useState(null)
   const [selTasks,setSelTasks]=useState([])
   const [selQuotes,setSelQuotes]=useState([])
@@ -188,6 +191,12 @@ export default function PageFunnel({user}){
   }
   useEffect(()=>{load()},[])
 
+  useLayoutEffect(()=>{
+    const bot=botScrollRef.current
+    const probe=probeRef.current
+    if(!bot||!probe) return
+    probe.style.width=bot.scrollWidth+'px'
+  })
 
   // Автообновление доски каждые 60 секунд (новые заявки из почты)
   useEffect(()=>{
@@ -402,9 +411,17 @@ export default function PageFunnel({user}){
         })}
       </div>
 
-      {/* Kanban — scrollbar on top via rotateX trick */}
-      <div style={{transform:'rotateX(180deg)',overflowX:'auto',paddingBottom:8}}>
-      <div style={{transform:'rotateX(180deg)',display:'flex',gap:10,alignItems:'flex-start',paddingTop:8}}>
+      {/* Top scrollbar */}
+      <div ref={topScrollRef}
+        onScroll={()=>{if(botScrollRef.current)botScrollRef.current.scrollLeft=topScrollRef.current.scrollLeft}}
+        style={{overflowX:'scroll',overflowY:'hidden',height:17,marginBottom:2}}>
+        <div ref={probeRef} style={{height:1,width:'100%'}}/>
+      </div>
+
+      {/* Kanban */}
+      <div ref={botScrollRef}
+        onScroll={()=>{if(topScrollRef.current)topScrollRef.current.scrollLeft=botScrollRef.current.scrollLeft}}
+        style={{display:'flex',gap:10,overflowX:'auto',paddingBottom:12,alignItems:'flex-start'}}>
         {activeBoard.stages.map(stage=>{
           const ci=COLOR_MAP[stage.color]||COLOR_MAP.blue
           const cards=stageCards(stage.id)
@@ -510,7 +527,6 @@ export default function PageFunnel({user}){
             </div>
           </div>
         )}
-      </div>
       </div>
 
       {/* Stage change modal */}
