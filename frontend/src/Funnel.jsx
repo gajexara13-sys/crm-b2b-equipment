@@ -1,4 +1,4 @@
-import React,{useState,useEffect,useMemo} from 'react'
+import React,{useState,useEffect,useMemo,useRef,useCallback} from 'react'
 import axios from 'axios'
 import {useNavigate} from 'react-router-dom'
 import Modal from './Modal'
@@ -166,6 +166,8 @@ export default function PageFunnel({user}){
   const [clients,setClients]=useState([])
   const [drag,setDrag]=useState(null)
   const [over,setOver]=useState(null)
+  const kanbanTopRef=useRef(null)
+  const kanbanBotRef=useRef(null)
   const [sel,setSel]=useState(null)
   const [selTasks,setSelTasks]=useState([])
   const [selQuotes,setSelQuotes]=useState([])
@@ -187,6 +189,19 @@ export default function PageFunnel({user}){
     api.get('/crm/quotes').then(r=>setAllQuotes(r.data||[])).catch(()=>{})
   }
   useEffect(()=>{load()},[])
+
+  // Sync top scrollbar width with kanban inner width
+  useEffect(()=>{
+    const bot=kanbanBotRef.current
+    if(!bot) return
+    const probe=document.getElementById('kanban-width-probe')
+    const update=()=>{if(probe) probe.style.width=bot.scrollWidth+'px'}
+    update()
+    const ro=new ResizeObserver(update)
+    ro.observe(bot)
+    return ()=>ro.disconnect()
+  })
+
   // Автообновление доски каждые 60 секунд (новые заявки из почты)
   useEffect(()=>{
     const t=setInterval(()=>load(),60000)
@@ -400,8 +415,17 @@ export default function PageFunnel({user}){
         })}
       </div>
 
+      {/* Top mirror scrollbar */}
+      <div ref={kanbanTopRef}
+        onScroll={()=>{if(kanbanBotRef.current)kanbanBotRef.current.scrollLeft=kanbanTopRef.current.scrollLeft}}
+        style={{overflowX:'auto',overflowY:'hidden',height:14,marginBottom:2}}>
+        <div id="kanban-width-probe" style={{height:1}}/>
+      </div>
+
       {/* Kanban */}
-      <div style={{display:'flex',gap:10,overflowX:'auto',paddingBottom:12,alignItems:'flex-start'}}>
+      <div ref={kanbanBotRef}
+        onScroll={()=>{if(kanbanTopRef.current)kanbanTopRef.current.scrollLeft=kanbanBotRef.current.scrollLeft}}
+        style={{display:'flex',gap:10,overflowX:'auto',paddingBottom:12,alignItems:'flex-start'}}>
         {activeBoard.stages.map(stage=>{
           const ci=COLOR_MAP[stage.color]||COLOR_MAP.blue
           const cards=stageCards(stage.id)
