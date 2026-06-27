@@ -253,8 +253,11 @@ export default function PageFunnel({user}){
   }
   const urgColor=u=>u==='urgent'?'#ef4444':u==='high'?'#f59e0b':'#10b981'
 
-  const cardStyle=req=>{
+  const cardStyle=(req,stageCfg)=>{
     const ts=taskStatus(req),sla=getSlaStatus(req,boardId)
+    // handoff/terminal stages don't require tasks — no red border
+    if(ts==='none'&&stageCfg?.type&&['handoff','terminal_won','terminal_lost'].includes(stageCfg.type))
+      return {border:'1px solid var(--border)',background:'var(--card-bg)',boxShadow:'0 1px 4px rgba(0,0,0,0.1)'}
     if(ts==='none')    return {border:'2px solid #ef4444',background:'var(--card-bg-none)'}
     if(ts==='overdue') return {border:'2px solid #f97316',background:'var(--card-bg-overdue)'}
     if(ts==='today')   return {border:'1.5px solid #eab308',background:'var(--card-bg-today)'}
@@ -457,7 +460,7 @@ export default function PageFunnel({user}){
               <div style={{padding:'8px',display:'flex',flexDirection:'column',gap:6,minHeight:80,flex:1}}>
                 {cards.map(r=>{
                   const ts=taskStatus(r),sla=getSlaStatus(r,boardId)
-                  const cs=cardStyle(r)
+                  const cs=cardStyle(r,stage)
                   const dueDate=r.next_task_due_at?new Date(r.next_task_due_at):null
                   return(
                     <div key={r.id}
