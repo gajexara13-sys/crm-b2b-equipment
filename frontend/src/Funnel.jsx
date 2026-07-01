@@ -41,8 +41,10 @@ const FIELD_LABELS={
   installation_engineer:'Инженер по монтажу',closing_docs_received:'Закрывающие документы',
   linked_deal_id:'ID связанной сделки',claim_description:'Описание рекламации',
   resolution_description:'Описание решения',return_reason:'Причина возврата',
+  return_date:'Дата возврата к работе',lost_reason:'Причина',
 }
 const BOOL_FIELDS=['need_confirmed','stock_confirmed','closing_docs_received']
+const DATE_FIELDS=['return_date']
 
 function dfltDue(){
   const t=new Date();t.setDate(t.getDate()+1);t.setHours(12,0,0,0)
@@ -237,7 +239,10 @@ export default function PageFunnel({user}){
 
   const boardCounts=useMemo(()=>{
     const m={}
-    boardsConfig.boards.forEach(b=>{m[b.id]=reqs.filter(r=>(r.board_id||'sales')===b.id).length})
+    boardsConfig.boards.forEach(b=>{
+      const parking=new Set(b.stages.filter(s=>s.pipeline===false).map(s=>s.id))
+      m[b.id]=reqs.filter(r=>(r.board_id||'sales')===b.id&&!parking.has(r.stage)).length
+    })
     return m
   },[reqs])
 
@@ -256,7 +261,7 @@ export default function PageFunnel({user}){
   const cardStyle=(req,stageCfg)=>{
     const ts=taskStatus(req),sla=getSlaStatus(req,boardId)
     // handoff/terminal stages don't require tasks — no red border
-    if(ts==='none'&&stageCfg?.type&&['handoff','terminal_won','terminal_lost'].includes(stageCfg.type))
+    if(ts==='none'&&stageCfg?.type&&['handoff','terminal_won','terminal_lost','holding'].includes(stageCfg.type))
       return {border:'1px solid var(--border)',background:'var(--card-bg)',boxShadow:'0 1px 4px rgba(0,0,0,0.1)'}
     if(ts==='none')    return {border:'2px solid #ef4444',background:'var(--card-bg-none)'}
     if(ts==='overdue') return {border:'2px solid #f97316',background:'var(--card-bg-overdue)'}
@@ -268,14 +273,17 @@ export default function PageFunnel({user}){
 
   const initiateStage=(req,targetId)=>{
     if(req.stage===targetId) return
+    const cfg=getStageCfg(boardId,targetId)
     const isLost=targetId==='lost'
     const isTransferred=targetId==='transferred'
-    if(isLost||isTransferred){
+    const isNurturing=targetId==='nurturing'
+    if(isLost||isTransferred||isNurturing){
       const fv={}
       if(isLost) fv.lost_reason=req.lost_reason||''
-      setStageModal({req,targetId,missing:[],fv,
-        lostOpts:isLost?(getStageCfg(boardId,'lost')?.lost_reason_options||[]):[],
-        isTransferred})
+      if(isNurturing) fv.return_date=getFieldVal(req,'return_date')||''
+      setStageModal({req,targetId,missing:isNurturing?['return_date']:[],fv,
+        lostOpts:isLost?(cfg?.lost_reason_options||[]):[],
+        isTransferred,isNurturing})
     } else {
       doStage(req,targetId,null,{})
     }
@@ -366,6 +374,103 @@ export default function PageFunnel({user}){
 
   if(!activeBoard) return <div>Доска не найдена</div>
 
+  // Основной пайплайн vs «отстойники» вне воронки (pipeline:false)
+  const pipelineStages=activeBoard.stages.filter(s=>s.pipeline!==false)
+  const parkingStages=activeBoard.stages.filter(s=>s.pipeline===false)
+
+  const renderColumn=stage=>{
+    const ci=COLOR_MAP[stage.color]||COLOR_MAP.blue
+    const cards=stageCards(stage.id)
+    const isOver=over===stage.id
+    const overdueN=cards.filter(r=>taskStatus(r)==='overdue').length
+    const noTaskN=cards.filter(r=>taskStatus(r)==='none').length
+    const slaOvN=cards.filter(r=>getSlaStatus(r,boardId)==='sla_overdue').length
+    const isTermWon=stage.type==='terminal_won'
+    const isTermLost=stage.type==='terminal_lost'
+    const isHandoff=stage.type==='handoff'
+    const isHolding=stage.type==='holding'
+    const isParking=stage.pipeline===false
+    return(
+      <div key={stage.id}
+        onDragOver={e=>{e.preventDefault();setOver(stage.id)}}
+        onDrop={e=>{
+          e.preventDefault()
+          if(drag&&drag.stage!==stage.id) initiateStage(drag,stage.id)
+          setDrag(null);setOver(null)
+        }}
+        style={{minWidth:200,maxWidth:220,flexShrink:0,
+          background:isOver?ci.bg:'var(--surface2)',
+          border:(isParking?'2px dashed ':'2px solid ')+(isOver?ci.color:'var(--border)'),
+          borderRadius:10,transition:'all 0.15s',display:'flex',flexDirection:'column'}}
+      >
+        <div style={{padding:'10px 12px',borderBottom:'1px solid #e8ecf5',background:ci.bg,borderRadius:'8px 8px 0 0'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontWeight:700,fontSize:12,color:ci.color}}>
+              {isTermWon&&'✓ '}{isTermLost&&'✗ '}{isHandoff&&'→ '}{isHolding&&'⏸ '}{stage.name}
+            </span>
+            <div style={{display:'flex',gap:3,alignItems:'center'}}>
+              {slaOvN>0&&<span style={{background:'#dc2626',color:'#fff',borderRadius:10,padding:'1px 5px',fontSize:9,fontWeight:700}} title="SLA просрочен">⏱{slaOvN}</span>}
+              {overdueN>0&&<span style={{background:'#f97316',color:'#fff',borderRadius:10,padding:'1px 5px',fontSize:10,fontWeight:700}} title="Задача просрочена">⏰{overdueN}</span>}
+              {noTaskN>0&&<span style={{background:'#ef4444',color:'#fff',borderRadius:10,padding:'1px 5px',fontSize:10,fontWeight:700}} title="Нет задачи">!{noTaskN}</span>}
+              <span style={{background:ci.color,color:'#fff',borderRadius:10,padding:'1px 8px',fontSize:11,fontWeight:600}}>{cards.length}</span>
+            </div>
+          </div>
+          {isParking
+            ?<div style={{fontSize:9,color:'var(--text5)',marginTop:1,textTransform:'uppercase',letterSpacing:'0.04em'}}>Вне воронки</div>
+            :stage.sla_days&&<div style={{fontSize:9,color:'var(--text5)',marginTop:1}}>Срок: {stage.sla_days} дн.</div>}
+        </div>
+        <div style={{padding:'8px',display:'flex',flexDirection:'column',gap:6,minHeight:80,flex:1}}>
+          {cards.map(r=>{
+            const ts=taskStatus(r),sla=getSlaStatus(r,boardId)
+            const cs=cardStyle(r,stage)
+            const dueDate=r.next_task_due_at?new Date(r.next_task_due_at):null
+            return(
+              <div key={r.id}
+                draggable
+                onDragStart={e=>{setDrag(r);e.dataTransfer.effectAllowed='move'}}
+                onDragEnd={()=>{setDrag(null);setOver(null)}}
+                onClick={()=>openSel(r)}
+                style={{...cs,borderRadius:7,padding:'8px 10px',cursor:'grab',
+                  opacity:drag?.id===r.id?0.5:1,transition:'box-shadow 0.1s'}}
+              >
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:3}}>
+                  <div style={{fontWeight:600,fontSize:12,color:'var(--text)',lineHeight:1.3}}>{r.number||('№'+r.id)}</div>
+                  <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
+                    {ts==='none'&&<span style={{fontSize:9,fontWeight:700,color:'#ef4444',background:'#fee2e2',borderRadius:4,padding:'1px 5px'}}>НЕТ ЗАДАЧИ</span>}
+                    {ts==='overdue'&&<span style={{fontSize:9,fontWeight:700,color:'#c2410c',background:'#ffedd5',borderRadius:4,padding:'1px 5px'}}>ПРОСРОЧЕНА</span>}
+                    {ts==='today'&&<span style={{fontSize:9,fontWeight:700,color:'#854d0e',background:'#fef9c3',borderRadius:4,padding:'1px 5px'}}>СЕГОДНЯ</span>}
+                    {sla==='sla_overdue'&&<span style={{fontSize:9,fontWeight:700,color:'#dc2626',background:'#fee2e2',borderRadius:4,padding:'1px 5px'}}>SLA!</span>}
+                    {sla==='sla_warn'&&<span style={{fontSize:9,fontWeight:700,color:'#92400e',background:'#fef3c7',borderRadius:4,padding:'1px 5px'}}>SLA~</span>}
+                  </div>
+                </div>
+                <div style={{fontSize:11,color:'var(--text3)',marginBottom:3}}>{cName(r.client_id)}</div>
+                {r.material_type&&<div style={{fontSize:10,color:'var(--text4)',background:'var(--surface2)',borderRadius:4,padding:'1px 6px',marginBottom:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.material_type}</div>}
+                {(()=>{const ca=cardAmount(r);return ca
+                  ?<div style={{fontSize:11,fontWeight:600,color:'var(--primary)'}}>{ca.amount.toLocaleString('ru')} ₽{ca.isQuote&&<span style={{fontSize:9,color:'var(--text4)',fontWeight:400,marginLeft:3}}>КП</span>}</div>
+                  :<div style={{fontSize:11,fontWeight:600,color:'var(--text5)'}}>—</div>
+                })()}
+                {r.lost_reason&&<div style={{fontSize:9,color:'#dc2626',marginTop:2}}>✗ {r.lost_reason}</div>}
+                {r.extra_fields?.return_date&&<div style={{fontSize:9,color:'#a16207',marginTop:2}}>↩ Возврат: {r.extra_fields.return_date}</div>}
+                {dueDate&&(
+                  <div style={{fontSize:10,marginTop:3,
+                    color:ts==='overdue'?'#c2410c':ts==='today'?'#854d0e':'var(--text3)'}}>
+                    {ts==='overdue'?'⏰ ':ts==='today'?'⏳ ':'🔔 '}
+                    {dueDate.toLocaleString('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
+                  </div>
+                )}
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:4}}>
+                  {r.urgency&&<span style={{width:8,height:8,borderRadius:'50%',background:urgColor(r.urgency),display:'inline-block'}} title={r.urgency}/>}
+                  <span style={{fontSize:10,color:'var(--text5)',marginLeft:'auto'}}>{r.created_at?.slice(0,10)||''}</span>
+                </div>
+              </div>
+            )
+          })}
+          {cards.length===0&&<div style={{textAlign:'center',color:'var(--text5)',fontSize:11,padding:'16px 0'}}>Пусто</div>}
+        </div>
+      </div>
+    )
+  }
+
   return(
     <div style={{fontFamily:'-apple-system,sans-serif'}}>
       {/* Header */}
@@ -420,93 +525,12 @@ export default function PageFunnel({user}){
         onScroll={()=>{if(stickyScrollRef.current)stickyScrollRef.current.scrollLeft=botScrollRef.current.scrollLeft}}
         className="kanban-no-scrollbar"
         style={{display:'flex',gap:10,overflowX:'auto',paddingBottom:4,alignItems:'flex-start'}}>
-        {activeBoard.stages.map(stage=>{
-          const ci=COLOR_MAP[stage.color]||COLOR_MAP.blue
-          const cards=stageCards(stage.id)
-          const isOver=over===stage.id
-          const overdueN=cards.filter(r=>taskStatus(r)==='overdue').length
-          const noTaskN=cards.filter(r=>taskStatus(r)==='none').length
-          const slaOvN=cards.filter(r=>getSlaStatus(r,boardId)==='sla_overdue').length
-          const isTermWon=stage.type==='terminal_won'
-          const isTermLost=stage.type==='terminal_lost'
-          const isHandoff=stage.type==='handoff'
-          return(
-            <div key={stage.id}
-              onDragOver={e=>{e.preventDefault();setOver(stage.id)}}
-              onDrop={e=>{
-                e.preventDefault()
-                if(drag&&drag.stage!==stage.id) initiateStage(drag,stage.id)
-                setDrag(null);setOver(null)
-              }}
-              style={{minWidth:200,maxWidth:220,flexShrink:0,
-                background:isOver?ci.bg:'var(--surface2)',
-                border:'2px solid '+(isOver?ci.color:'var(--border)'),
-                borderRadius:10,transition:'all 0.15s',display:'flex',flexDirection:'column'}}
-            >
-              <div style={{padding:'10px 12px',borderBottom:'1px solid #e8ecf5',background:ci.bg,borderRadius:'8px 8px 0 0'}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                  <span style={{fontWeight:700,fontSize:12,color:ci.color}}>
-                    {isTermWon&&'✓ '}{isTermLost&&'✗ '}{isHandoff&&'→ '}{stage.name}
-                  </span>
-                  <div style={{display:'flex',gap:3,alignItems:'center'}}>
-                    {slaOvN>0&&<span style={{background:'#dc2626',color:'#fff',borderRadius:10,padding:'1px 5px',fontSize:9,fontWeight:700}} title="SLA просрочен">⏱{slaOvN}</span>}
-                    {overdueN>0&&<span style={{background:'#f97316',color:'#fff',borderRadius:10,padding:'1px 5px',fontSize:10,fontWeight:700}} title="Задача просрочена">⏰{overdueN}</span>}
-                    {noTaskN>0&&<span style={{background:'#ef4444',color:'#fff',borderRadius:10,padding:'1px 5px',fontSize:10,fontWeight:700}} title="Нет задачи">!{noTaskN}</span>}
-                    <span style={{background:ci.color,color:'#fff',borderRadius:10,padding:'1px 8px',fontSize:11,fontWeight:600}}>{cards.length}</span>
-                  </div>
-                </div>
-                {stage.sla_days&&<div style={{fontSize:9,color:'var(--text5)',marginTop:1}}>Срок: {stage.sla_days} дн.</div>}
-              </div>
-              <div style={{padding:'8px',display:'flex',flexDirection:'column',gap:6,minHeight:80,flex:1}}>
-                {cards.map(r=>{
-                  const ts=taskStatus(r),sla=getSlaStatus(r,boardId)
-                  const cs=cardStyle(r,stage)
-                  const dueDate=r.next_task_due_at?new Date(r.next_task_due_at):null
-                  return(
-                    <div key={r.id}
-                      draggable
-                      onDragStart={e=>{setDrag(r);e.dataTransfer.effectAllowed='move'}}
-                      onDragEnd={()=>{setDrag(null);setOver(null)}}
-                      onClick={()=>openSel(r)}
-                      style={{...cs,borderRadius:7,padding:'8px 10px',cursor:'grab',
-                        opacity:drag?.id===r.id?0.5:1,transition:'box-shadow 0.1s'}}
-                    >
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:3}}>
-                        <div style={{fontWeight:600,fontSize:12,color:'var(--text)',lineHeight:1.3}}>{r.number||('№'+r.id)}</div>
-                        <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
-                          {ts==='none'&&<span style={{fontSize:9,fontWeight:700,color:'#ef4444',background:'#fee2e2',borderRadius:4,padding:'1px 5px'}}>НЕТ ЗАДАЧИ</span>}
-                          {ts==='overdue'&&<span style={{fontSize:9,fontWeight:700,color:'#c2410c',background:'#ffedd5',borderRadius:4,padding:'1px 5px'}}>ПРОСРОЧЕНА</span>}
-                          {ts==='today'&&<span style={{fontSize:9,fontWeight:700,color:'#854d0e',background:'#fef9c3',borderRadius:4,padding:'1px 5px'}}>СЕГОДНЯ</span>}
-                          {sla==='sla_overdue'&&<span style={{fontSize:9,fontWeight:700,color:'#dc2626',background:'#fee2e2',borderRadius:4,padding:'1px 5px'}}>SLA!</span>}
-                          {sla==='sla_warn'&&<span style={{fontSize:9,fontWeight:700,color:'#92400e',background:'#fef3c7',borderRadius:4,padding:'1px 5px'}}>SLA~</span>}
-                        </div>
-                      </div>
-                      <div style={{fontSize:11,color:'var(--text3)',marginBottom:3}}>{cName(r.client_id)}</div>
-                      {r.material_type&&<div style={{fontSize:10,color:'var(--text4)',background:'var(--surface2)',borderRadius:4,padding:'1px 6px',marginBottom:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.material_type}</div>}
-                      {(()=>{const ca=cardAmount(r);return ca
-                        ?<div style={{fontSize:11,fontWeight:600,color:'var(--primary)'}}>{ca.amount.toLocaleString('ru')} ₽{ca.isQuote&&<span style={{fontSize:9,color:'var(--text4)',fontWeight:400,marginLeft:3}}>КП</span>}</div>
-                        :<div style={{fontSize:11,fontWeight:600,color:'var(--text5)'}}>—</div>
-                      })()}
-                      {r.lost_reason&&<div style={{fontSize:9,color:'#dc2626',marginTop:2}}>✗ {r.lost_reason}</div>}
-                      {dueDate&&(
-                        <div style={{fontSize:10,marginTop:3,
-                          color:ts==='overdue'?'#c2410c':ts==='today'?'#854d0e':'var(--text3)'}}>
-                          {ts==='overdue'?'⏰ ':ts==='today'?'⏳ ':'🔔 '}
-                          {dueDate.toLocaleString('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
-                        </div>
-                      )}
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:4}}>
-                        {r.urgency&&<span style={{width:8,height:8,borderRadius:'50%',background:urgColor(r.urgency),display:'inline-block'}} title={r.urgency}/>}
-                        <span style={{fontSize:10,color:'var(--text5)',marginLeft:'auto'}}>{r.created_at?.slice(0,10)||''}</span>
-                      </div>
-                    </div>
-                  )
-                })}
-                {cards.length===0&&<div style={{textAlign:'center',color:'var(--text5)',fontSize:11,padding:'16px 0'}}>Пусто</div>}
-              </div>
-            </div>
-          )
-        })}
+        {pipelineStages.map(renderColumn)}
+
+        {parkingStages.length>0&&(
+          <div style={{alignSelf:'stretch',width:0,borderLeft:'2px dashed var(--border)',margin:'0 2px',flexShrink:0}}/>
+        )}
+        {parkingStages.map(renderColumn)}
 
         {unknownCards.length>0&&(
           <div style={{minWidth:200,maxWidth:220,flexShrink:0,background:'var(--surface2)',border:'2px dashed #d1d5db',borderRadius:10}}>
@@ -544,6 +568,7 @@ export default function PageFunnel({user}){
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
               <h3 style={{margin:0,fontSize:15,fontWeight:700}}>
                 {stageModal.isTransferred?'📦 Передача в производство':
+                 stageModal.isNurturing?'⏸ Отложить (прогрев)':
                  stageModal.lostOpts.length?'Причина отказа':'Требуются данные'}
               </h3>
               <button onClick={()=>setStageModal(null)} style={{background:'transparent',border:'none',fontSize:20,cursor:'pointer',color:'var(--text3)'}}>×</button>
@@ -552,6 +577,12 @@ export default function PageFunnel({user}){
             {stageModal.isTransferred&&(
               <div style={{background:'#f0fdfa',border:'1px solid #99f6e4',borderRadius:8,padding:'10px 14px',marginBottom:14,fontSize:13,color:'#0f766e'}}>
                 ℹ При переводе в «Передан в производство» автоматически создаётся карточка на доске <b>«Исполнение»</b>.
+              </div>
+            )}
+
+            {stageModal.isNurturing&&(
+              <div style={{background:'#fefce8',border:'1px solid #fde68a',borderRadius:8,padding:'10px 14px',marginBottom:14,fontSize:13,color:'#854d0e'}}>
+                ℹ Сделка уходит <b>вне основной воронки</b> в «Отложенные (прогрев)» и не учитывается в счётчике активных. Укажите дату, когда вернуться к работе.
               </div>
             )}
 
@@ -570,6 +601,10 @@ export default function PageFunnel({user}){
                             onChange={e=>setStageModal(m=>({...m,fv:{...m.fv,[f]:e.target.checked}}))}/>
                           Подтвердить
                         </label>
+                      ):DATE_FIELDS.includes(f)?(
+                        <input type="date" value={stageModal.fv[f]||''}
+                          onChange={e=>setStageModal(m=>({...m,fv:{...m.fv,[f]:e.target.value}}))}
+                          style={inp()}/>
                       ):(
                         <input value={stageModal.fv[f]||''}
                           onChange={e=>setStageModal(m=>({...m,fv:{...m.fv,[f]:e.target.value}}))}
@@ -598,8 +633,9 @@ export default function PageFunnel({user}){
               <button onClick={()=>setStageModal(null)}
                 style={btn({background:'var(--surface2)',color:'var(--text3)',border:'1px solid var(--border)'})}>Отмена</button>
               <button onClick={submitModal}
-                style={btn({background:stageModal.isTransferred?'#0d9488':stageModal.lostOpts.length?'#dc2626':'#0f172a',color:'#fff'})}>
+                style={btn({background:stageModal.isTransferred?'#0d9488':stageModal.isNurturing?'#ca8a04':stageModal.lostOpts.length?'#dc2626':'#0f172a',color:'#fff'})}>
                 {stageModal.isTransferred?'📦 Передать в производство':
+                 stageModal.isNurturing?'⏸ Отложить':
                  stageModal.lostOpts.length?'Зафиксировать отказ':'Сохранить и перейти'}
               </button>
             </div>
