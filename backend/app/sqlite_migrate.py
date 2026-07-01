@@ -127,6 +127,7 @@ def run_sqlite_migrations() -> None:
 
     _move_legacy_transferred()
     _move_completed_to_operation()
+    _fix_legacy_new_stage()
     _bump_vat_rate_to_22()
     _seed_service_catalog()
     _seed_product_catalog()
@@ -166,6 +167,18 @@ def _move_completed_to_operation() -> None:
             "UPDATE requests SET board_id='aftersales', stage='operation' "
             "WHERE board_id='operations' AND stage='complete'"
         ))
+
+
+def _fix_legacy_new_stage() -> None:
+    """Старые заявки со стадией `new_request` (до переименования стадии в `new`)
+    попадали в колонку «Устаревшие этапы». Переносим их в «Новый лид» (`new`).
+    Идемпотентно.
+    """
+    insp = inspect(engine)
+    if "requests" not in insp.get_table_names():
+        return
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE requests SET stage='new' WHERE stage='new_request'"))
 
 
 def _bump_vat_rate_to_22() -> None:
