@@ -32,7 +32,7 @@ function emptyForm() {
     signature_url: '',
     stamp_url: '',
     default_currency: 'RUB',
-    vat_rate: 20,
+    vat_rate: 22,
     is_active: true,
   }
 }
@@ -80,7 +80,7 @@ export default function SenderProfiles() {
       signature_url: p.signature_url || '',
       stamp_url: p.stamp_url || '',
       default_currency: p.default_currency || 'RUB',
-      vat_rate: p.vat_rate ?? 20,
+      vat_rate: p.vat_rate ?? 22,
       is_active: p.is_active !== false,
     })
     setOpen(true)
@@ -109,7 +109,7 @@ export default function SenderProfiles() {
         signature_url: form.signature_url || null,
         stamp_url: form.stamp_url || null,
         default_currency: form.default_currency || 'RUB',
-        vat_rate: Number(form.vat_rate) || 20,
+        vat_rate: Number(form.vat_rate) || 22,
         is_active: form.is_active,
       }
       if (form.id) await api.put(`/crm/quotes/sender-profiles/${form.id}`, payload)

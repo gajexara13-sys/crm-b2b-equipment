@@ -319,7 +319,7 @@ function emptyForm(kind = 'product') {
     terms_payment: '',
     terms_currency_note: '',
     currency: 'RUB',
-    vat_rate: 20,
+    vat_rate: 22,
     show_discount_column: true,
     items: [],
   }
@@ -907,7 +907,7 @@ export default function CommercialOffers() {
       terms_payment: q.terms_payment || '',
       terms_currency_note: q.terms_currency_note || '',
       currency: q.currency || 'RUB',
-      vat_rate: q.vat_rate ?? 20,
+      vat_rate: q.vat_rate ?? 22,
       show_discount_column: q.show_discount_column !== false,
       items: (q.items || []).map(i => ({
         ...i,
@@ -1018,7 +1018,7 @@ export default function CommercialOffers() {
         terms_payment: form.terms_payment || null,
         terms_currency_note: form.terms_currency_note || null,
         currency: form.currency,
-        vat_rate: Number(form.vat_rate) || 20,
+        vat_rate: Number(form.vat_rate) || 22,
         show_discount_column: form.show_discount_column,
         items: form.items.map((i, idx) => ({
           sort_order: idx,

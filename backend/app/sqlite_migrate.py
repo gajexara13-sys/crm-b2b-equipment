@@ -127,6 +127,7 @@ def run_sqlite_migrations() -> None:
 
     _move_legacy_transferred()
     _move_completed_to_operation()
+    _bump_vat_rate_to_22()
     _seed_service_catalog()
     _seed_product_catalog()
     _add_asphalt_subcats()
@@ -165,6 +166,18 @@ def _move_completed_to_operation() -> None:
             "UPDATE requests SET board_id='aftersales', stage='operation' "
             "WHERE board_id='operations' AND stage='complete'"
         ))
+
+
+def _bump_vat_rate_to_22() -> None:
+    """Обновляем ставку НДС в профилях-отправителях со старых 20% на 22%.
+    Трогаем только значение ровно 20 (старый дефолт), кастомные ставки не меняем.
+    Идемпотентно.
+    """
+    insp = inspect(engine)
+    if "quote_sender_profiles" not in insp.get_table_names():
+        return
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE quote_sender_profiles SET vat_rate=22 WHERE vat_rate=20"))
 
 
 def _seed_service_catalog() -> None:

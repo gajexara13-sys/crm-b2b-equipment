@@ -240,7 +240,7 @@ class QuoteIn(BaseModel):
     intro_text: Optional[str] = None
     show_discount_column: bool = True
     currency: str = "RUB"
-    vat_rate: float = 20.0
+    vat_rate: float = 22.0
     fx_rate: float = 1.0
     terms_template_id: Optional[int] = None
     terms_production_country: Optional[str] = None
