@@ -27,3 +27,5 @@ class Request(Base):
     selected_price_position_ids_json = Column(Text)
     selected_indicator_ids_json = Column(Text)
     board_id = Column(String, default="sales")
+    lost_reason = Column(String)          # причина для этапа «Архив/Отказ»
+    extra_fields_json = Column(Text)      # доп. поля этапов (напр. дата возврата для «Отложенные»)

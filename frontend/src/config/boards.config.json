@@ -21,24 +21,33 @@
           ]
         },
         {
-          "id": "qualification",
-          "name": "Квалификация",
+          "id": "no-answer",
+          "name": "Не дозвонились",
           "position": 2,
-          "color": "indigo",
+          "color": "orange",
           "type": "active",
           "sla_days": 2,
           "required_fields_on_enter": [],
+          "required_fields_on_exit": [],
+          "note": "Пытались связаться, пока не дозвонились — держим на дозвоне"
+        },
+        {
+          "id": "first-contact",
+          "name": "Первичный контакт",
+          "position": 3,
+          "color": "indigo",
+          "type": "active",
+          "sla_days": 3,
+          "required_fields_on_enter": [],
           "required_fields_on_exit": [
-            "budget",
-            "decision_maker",
-            "need_confirmed"
+            "contact_name"
           ],
-          "note": "BANT-проверка перед передачей инженерам"
+          "note": "Дозвонились / связались, идёт первичное выяснение потребности"
         },
         {
           "id": "specification",
           "name": "Подбор / ТЗ",
-          "position": 3,
+          "position": 4,
           "color": "blue",
           "type": "active",
           "sla_days": 5,
@@ -51,7 +60,7 @@
         {
           "id": "quote-sent",
           "name": "КП отправлено",
-          "position": 4,
+          "position": 5,
           "color": "cyan",
           "type": "active",
           "sla_days": 5,
@@ -65,7 +74,7 @@
         {
           "id": "negotiation",
           "name": "Переговоры",
-          "position": 5,
+          "position": 6,
           "color": "amber",
           "type": "active",
           "sla_days": 10,
@@ -76,7 +85,7 @@
         {
           "id": "contract",
           "name": "Договор",
-          "position": 6,
+          "position": 7,
           "color": "emerald",
           "type": "active",
           "sla_days": 5,
@@ -89,7 +98,7 @@
         {
           "id": "invoice",
           "name": "Оплата",
-          "position": 7,
+          "position": 8,
           "color": "violet",
           "type": "active",
           "sla_days": 14,
@@ -103,7 +112,7 @@
         {
           "id": "transferred",
           "name": "Передан в производство",
-          "position": 8,
+          "position": 9,
           "color": "teal",
           "type": "handoff",
           "sla_days": null,
@@ -113,11 +122,26 @@
           "note": "При переводе в этот статус автоматически создаётся карточка на доске 'Исполнение'"
         },
         {
+          "id": "nurturing",
+          "name": "Отложенные (прогрев)",
+          "position": 10,
+          "color": "yellow",
+          "type": "holding",
+          "pipeline": false,
+          "sla_days": null,
+          "required_fields_on_enter": [
+            "return_date"
+          ],
+          "required_fields_on_exit": [],
+          "note": "Вне основной воронки. Прогрев клиента — обязательна дата возврата к работе."
+        },
+        {
           "id": "lost",
-          "name": "Отказ / Проигрыш",
-          "position": 9,
+          "name": "Архив/Отказ",
+          "position": 11,
           "color": "red",
           "type": "terminal_lost",
+          "pipeline": false,
           "sla_days": null,
           "required_fields_on_enter": [
             "lost_reason"

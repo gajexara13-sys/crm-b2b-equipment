@@ -43,6 +43,8 @@ class RequestIn(BaseModel):
 
 class StageBody(BaseModel):
     stage: str
+    lost_reason: Optional[str] = None
+    extra_fields: Optional[dict] = None
 
 
 def _parse_json_int_list(raw: Optional[str]) -> List[int]:
@@ -55,6 +57,16 @@ def _parse_json_int_list(raw: Optional[str]) -> List[int]:
         return [int(x) for x in j]
     except Exception:
         return []
+
+
+def _parse_json_dict(raw: Optional[str]) -> dict:
+    if not raw:
+        return {}
+    try:
+        j = json.loads(raw)
+        return j if isinstance(j, dict) else {}
+    except Exception:
+        return {}
 
 
 def _indicator_ids_from_price_positions(db: Session, price_position_ids: List[int]) -> List[int]:
@@ -91,6 +103,7 @@ def _enrich_request(r: Request) -> dict:
     d = {c.name: getattr(r, c.name) for c in Request.__table__.columns}
     d["selected_price_position_ids"] = _parse_json_int_list(getattr(r, "selected_price_position_ids_json", None))
     d["selected_indicator_ids"] = _parse_json_int_list(getattr(r, "selected_indicator_ids_json", None))
+    d["extra_fields"] = _parse_json_dict(getattr(r, "extra_fields_json", None))
     return d
 
 
@@ -290,6 +303,12 @@ def update_stage(
                 "(звонок, отправка КП, встреча, контроль оплаты).",
             )
     r.stage = new
+    if body.lost_reason is not None:
+        r.lost_reason = body.lost_reason
+    if body.extra_fields:
+        merged = _parse_json_dict(getattr(r, "extra_fields_json", None))
+        merged.update({k: v for k, v in body.extra_fields.items() if v not in (None, "")})
+        r.extra_fields_json = json.dumps(merged, ensure_ascii=False) if merged else None
     if new == "transferred":
         r.board_id = "operations"
         r.stage = "china-ordered"
