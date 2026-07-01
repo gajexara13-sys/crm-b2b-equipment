@@ -125,10 +125,28 @@ def run_sqlite_migrations() -> None:
         ],
     )
 
+    _move_legacy_transferred()
     _seed_service_catalog()
     _seed_product_catalog()
     _add_asphalt_subcats()
     _migrate_email_tables()
+
+
+def _move_legacy_transferred() -> None:
+    """Старые карточки, застрявшие на этапе «Передан в производство» доски «Продажи»
+    (board_id=sales, stage=transferred) до появления авто-перехода, переносим в
+    «Исполнение» на стартовый этап «Заказ размещён». После этого «Передан в
+    производство» зеркалит только реально работающие в «Исполнении» сделки.
+    Идемпотентно: после переноса подходящих строк не остаётся.
+    """
+    insp = inspect(engine)
+    if "requests" not in insp.get_table_names():
+        return
+    with engine.begin() as conn:
+        conn.execute(text(
+            "UPDATE requests SET board_id='operations', stage='china-ordered' "
+            "WHERE (board_id IS NULL OR board_id='sales') AND stage='transferred'"
+        ))
 
 
 def _seed_service_catalog() -> None:
