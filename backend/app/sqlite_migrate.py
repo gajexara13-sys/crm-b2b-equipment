@@ -128,6 +128,7 @@ def run_sqlite_migrations() -> None:
     _move_legacy_transferred()
     _move_completed_to_operation()
     _fix_legacy_new_stage()
+    _remove_op_duplicate_cards()
     _bump_vat_rate_to_22()
     _seed_service_catalog()
     _seed_product_catalog()
@@ -179,6 +180,60 @@ def _fix_legacy_new_stage() -> None:
         return
     with engine.begin() as conn:
         conn.execute(text("UPDATE requests SET stage='new' WHERE stage='new_request'"))
+
+
+def _remove_op_duplicate_cards() -> None:
+    """Удаляет заявки-копии с префиксом `OP-`/`ОР-`, которые старая логика создавала
+    при передаче в производство, если существует оригинал с тем же номером (без
+    префикса). Связанные записи копии (задачи, КП, заметки, образцы, письма)
+    переносятся на оригинал, затем копия удаляется — данные не теряются.
+
+    Пары определяются по числовому хвосту номера `DDMMYY-NNN` (NNN сквозной и
+    уникальный), поэтому различие латиница/кириллица в буквах не мешает. Копии без
+    оригинала не трогаем. Идемпотентно.
+    """
+    import re
+
+    insp = inspect(engine)
+    tables = set(insp.get_table_names())
+    if "requests" not in tables:
+        return
+
+    tail_re = re.compile(r"(\d{6}-\d+)\s*$")
+    prefix_re = re.compile(r"^\s*(?:OP|ОР|ОP|OР)[-\s]", re.IGNORECASE)
+
+    with engine.begin() as conn:
+        rows = conn.execute(text("SELECT id, number FROM requests")).fetchall()
+        original_by_tail: dict[str, int] = {}
+        copies: list[tuple[int, str]] = []
+        for rid, num in rows:
+            s = num or ""
+            m = tail_re.search(s)
+            if not m:
+                continue
+            if prefix_re.match(s):
+                copies.append((rid, m.group(1)))
+            else:
+                original_by_tail.setdefault(m.group(1), rid)
+
+        ref_updates = [
+            ("deal_tasks", "request_id"),
+            ("commercial_quotes", "request_id"),
+            ("request_notes", "request_id"),
+            ("samples", "request_id"),
+            ("email_messages", "linked_request_id"),
+        ]
+        for copy_id, tail in copies:
+            orig_id = original_by_tail.get(tail)
+            if not orig_id or orig_id == copy_id:
+                continue
+            for tbl, col in ref_updates:
+                if tbl in tables:
+                    conn.execute(
+                        text(f"UPDATE {tbl} SET {col} = :orig WHERE {col} = :copy"),
+                        {"orig": orig_id, "copy": copy_id},
+                    )
+            conn.execute(text("DELETE FROM requests WHERE id = :id"), {"id": copy_id})
 
 
 def _bump_vat_rate_to_22() -> None:
