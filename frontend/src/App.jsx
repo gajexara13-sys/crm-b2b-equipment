@@ -1490,11 +1490,28 @@ function PageContacts() {
   const [rows,setRows]=useState([])
   const [q,setQ]=useState('')
   useEffect(()=>{api.get('/clients').then(r=>setRows(r.data))},[])
-  const filt=rows.filter(r=>{
-    if(!q) return true
-    const s=q.toLowerCase()
-    return (r.contact_name||'').toLowerCase().includes(s)||(r.contact_phone||'').toLowerCase().includes(s)||(r.contact_email||'').toLowerCase().includes(s)||(r.name||'').toLowerCase().includes(s)
+
+  // Разворачиваем каждого контрагента в отдельные строки-контакты:
+  // руководитель + контактное лицо (для переговоров) + дополнительные контакты.
+  const contacts=[]
+  rows.forEach(r=>{
+    const org=r.name
+    if(r.contact_name||r.contact_phone||r.contact_email)
+      contacts.push({key:r.id+'-1',role:'Руководитель',name:r.contact_name,position:r.contact_position,phone:r.contact_phone,email:r.contact_email,org})
+    const dup2=r.contact2_name===r.contact_name&&(r.contact2_phone||'')===(r.contact_phone||'')&&(r.contact2_email||'')===(r.contact_email||'')
+    if((r.contact2_name||r.contact2_phone||r.contact2_email)&&!dup2)
+      contacts.push({key:r.id+'-2',role:'Контактное лицо',name:r.contact2_name,position:r.contact2_position,phone:r.contact2_phone,email:r.contact2_email,org})
+    ;(r.extra_contacts||[]).forEach((ct,i)=>{
+      if(ct&&(ct.name||ct.phone||ct.email))
+        contacts.push({key:r.id+'-e'+i,role:'Доп. контакт',name:ct.name,position:ct.position,phone:ct.phone,email:ct.email,org})
+    })
   })
+
+  const s=q.trim().toLowerCase()
+  const filt=s
+    ? contacts.filter(c=>[c.name,c.phone,c.email,c.org,c.position].some(v=>(v||'').toLowerCase().includes(s)))
+    : contacts
+
   return(
     <Card title={`Контакты (${filt.length})`}>
       <div style={{marginBottom:12}}>
@@ -1502,18 +1519,19 @@ function PageContacts() {
           style={{padding:'7px 10px',border:'1px solid var(--inp-border)',borderRadius:6,fontSize:13,width:320}}/>
       </div>
       <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-        <thead><tr><Th>ФИО контакта</Th><Th>Телефон</Th><Th>Email</Th><Th>Организация</Th></tr></thead>
-        <tbody>{filt.filter(r=>r.contact_name||r.contact_phone||r.contact_email).map(r=>(
-          <tr key={r.id} style={{borderBottom:'1px solid var(--border2)'}}>
-            <Td bold>{r.contact_name||'—'}</Td>
-            <Td>{r.contact_phone}</Td>
-            <Td>{r.contact_email}</Td>
-            <Td>{r.name}</Td>
+        <thead><tr><Th>ФИО контакта</Th><Th>Тип</Th><Th>Телефон</Th><Th>Email</Th><Th>Организация</Th></tr></thead>
+        <tbody>{filt.map(c=>(
+          <tr key={c.key} style={{borderBottom:'1px solid var(--border2)'}}>
+            <Td bold>{c.name||'—'}{c.position&&<div style={{fontSize:11,color:'var(--text4)'}}>{c.position}</div>}</Td>
+            <Td>{c.role}</Td>
+            <Td>{c.phone||'—'}</Td>
+            <Td>{c.email||'—'}</Td>
+            <Td>{c.org}</Td>
           </tr>
         ))}</tbody>
       </table>
-      {filt.filter(r=>r.contact_name||r.contact_phone||r.contact_email).length===0&&
-        <p style={{color:'var(--text4)',textAlign:'center',padding:'2rem',fontSize:13}}>Контактные данные не заполнены. Добавьте контакты в карточках контрагентов.</p>}
+      {filt.length===0&&
+        <p style={{color:'var(--text4)',textAlign:'center',padding:'2rem',fontSize:13}}>{s?'Ничего не найдено.':'Контактные данные не заполнены. Добавьте контакты в карточках контрагентов.'}</p>}
     </Card>
   )
 }
