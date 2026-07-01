@@ -247,14 +247,6 @@ export default function PageFunnel({user}){
     })
   }
 
-  const unknownCards=useMemo(()=>{
-    if(!activeBoard) return []
-    const known=new Set(activeBoard.stages.map(s=>s.id))
-    // transferred-карточки теперь зеркалятся из «Исполнения», поэтому свои
-    // (board_id=sales) с этим этапом уже не должны оставаться — не считаем их «устаревшими».
-    return boardCards.filter(r=>!known.has(r.stage))
-  },[boardCards,activeBoard])
-
   const boardCounts=useMemo(()=>{
     const m={}
     boardsConfig.boards.forEach(b=>{
@@ -570,24 +562,6 @@ export default function PageFunnel({user}){
           <div style={{alignSelf:'stretch',width:0,borderLeft:'2px dashed var(--border)',margin:'0 2px',flexShrink:0}}/>
         )}
         {parkingStages.map(renderColumn)}
-
-        {unknownCards.length>0&&(
-          <div style={{minWidth:200,maxWidth:220,flexShrink:0,background:'var(--surface2)',border:'2px dashed #d1d5db',borderRadius:10}}>
-            <div style={{padding:'10px 12px',background:'#f9fafb',borderRadius:'8px 8px 0 0',borderBottom:'1px solid #e8ecf5',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <span style={{fontWeight:700,fontSize:12,color:'#9ca3af'}}>Устаревшие этапы</span>
-              <span style={{background:'#9ca3af',color:'#fff',borderRadius:10,padding:'1px 7px',fontSize:11}}>{unknownCards.length}</span>
-            </div>
-            <div style={{padding:'8px',display:'flex',flexDirection:'column',gap:6}}>
-              {unknownCards.map(r=>(
-                <div key={r.id} onClick={()=>openSel(r)}
-                  style={{border:'1px solid #d1d5db',borderRadius:7,padding:'8px 10px',cursor:'pointer',background:'#fff'}}>
-                  <div style={{fontWeight:600,fontSize:12}}>{r.number||('№'+r.id)}</div>
-                  <div style={{fontSize:11,color:'#9ca3af'}}>{r.stage} · {cName(r.client_id)}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Fixed bottom scrollbar */}
