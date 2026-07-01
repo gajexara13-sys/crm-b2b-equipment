@@ -273,32 +273,61 @@
     {
       "id": "aftersales",
       "name": "Постпродажное",
-      "description": "Рекламации и возвраты — отдельный модуль, не воронка продаж",
+      "description": "Эксплуатация, рекламации и сервисное обслуживание",
       "owner_role": "support_manager",
+      "created_from": "operations",
+      "created_from_trigger": "complete",
       "stages": [
+        {
+          "id": "operation",
+          "name": "Эксплуатация",
+          "position": 1,
+          "color": "teal",
+          "type": "initial",
+          "sla_days": null,
+          "required_fields_on_enter": [],
+          "note": "Оборудование поставлено и эксплуатируется. Карточки попадают сюда с этапа «Выполнен» доски «Исполнение»."
+        },
         {
           "id": "claim-new",
           "name": "Новая рекламация",
-          "position": 1,
+          "position": 2,
           "color": "red",
-          "type": "initial",
+          "type": "active",
           "required_fields_on_enter": [
-            "linked_deal_id",
             "claim_description"
           ]
         },
         {
           "id": "claim-review",
           "name": "Рассмотрение",
-          "position": 2,
+          "position": 3,
           "color": "orange",
           "type": "active",
           "sla_days": 5
         },
         {
+          "id": "diagnostics",
+          "name": "Диагностика",
+          "position": 4,
+          "color": "amber",
+          "type": "active",
+          "sla_days": 5,
+          "required_fields_on_enter": []
+        },
+        {
+          "id": "service",
+          "name": "Сервис",
+          "position": 5,
+          "color": "blue",
+          "type": "active",
+          "sla_days": 10,
+          "required_fields_on_enter": []
+        },
+        {
           "id": "claim-resolved",
           "name": "Решена",
-          "position": 3,
+          "position": 6,
           "color": "teal",
           "type": "terminal_won",
           "required_fields_on_enter": [
@@ -308,7 +337,7 @@
         {
           "id": "return",
           "name": "Возврат",
-          "position": 4,
+          "position": 7,
           "color": "rose",
           "type": "terminal_lost",
           "required_fields_on_enter": [

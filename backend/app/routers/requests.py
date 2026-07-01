@@ -325,6 +325,9 @@ def update_stage(
     if new == "transferred":
         r.board_id = "operations"
         r.stage = "china-ordered"
+    if new == "complete":
+        r.board_id = "aftersales"
+        r.stage = "operation"
     db.commit()
     db.refresh(r)
     out = _serialize_request_row(
