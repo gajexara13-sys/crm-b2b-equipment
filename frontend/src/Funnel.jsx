@@ -223,12 +223,21 @@ export default function PageFunnel({user}){
   const boardCards=useMemo(()=>reqs.filter(r=>(r.board_id||'sales')===boardId),[reqs,boardId])
 
   const stageCards=sid=>{
-    // «Передан в производство» на «Продажах» — зеркало сделок, которые сейчас
-    // в работе на «Исполнении». Как только сделка доходит до «Выполнен», она
-    // уходит в «Постпродажное» (board_id != operations) и исчезает отсюда.
-    const cards=(boardId==='sales'&&sid==='transferred')
-      ? reqs.filter(r=>(r.board_id||'sales')==='operations')
-      : boardCards.filter(r=>r.stage===sid)
+    let cards
+    if(boardId==='sales'&&sid==='transferred'){
+      // «Передан в производство» — зеркало сделок, которые СЕЙЧАС в работе на
+      // «Исполнении» (board_id=operations). Когда сделка доходит до «Выполнено»,
+      // она уходит в «Эксплуатацию» (board_id=aftersales) и исчезает отсюда.
+      cards=reqs.filter(r=>(r.board_id||'sales')==='operations')
+    } else if(boardId==='operations'&&sid==='complete'){
+      // «Выполнено» — зеркало доставленных заказов, ушедших в «Эксплуатацию»
+      // (Постпродажное). Карточка остаётся видна и здесь как результат производства.
+      const real=boardCards.filter(r=>r.stage==='complete')
+      const done=reqs.filter(r=>(r.board_id||'sales')==='aftersales'&&r.stage==='operation')
+      cards=[...real,...done]
+    } else {
+      cards=boardCards.filter(r=>r.stage===sid)
+    }
     return [...cards].sort((a,b)=>{
       const sa=a.has_active_task?1:0,sb=b.has_active_task?1:0
       if(sa!==sb) return sa-sb
@@ -432,21 +441,24 @@ export default function PageFunnel({user}){
         </div>
         <div style={{padding:'8px',display:'flex',flexDirection:'column',gap:6,minHeight:80,flex:1}}>
           {cards.map(r=>{
-            // Зеркальная карточка «Исполнения» на доске «Продажи» — только для чтения.
+            // Зеркальная карточка с другой доски — только для чтения, клик ведёт туда,
+            // где сделка находится на самом деле.
             const mirror=(r.board_id||'sales')!==boardId
             const ts=taskStatus(r),sla=getSlaStatus(r,boardId)
             const cs=cardStyle(r,stage)
             const dueDate=r.next_task_due_at?new Date(r.next_task_due_at):null
             if(mirror){
-              const opsStage=getStageCfg('operations',r.stage)
+              const realBoardId=(r.board_id||'sales')
+              const realStage=getStageCfg(realBoardId,r.stage)
+              const realBoardName=boardsConfig.boards.find(b=>b.id===realBoardId)?.name||realBoardId
               const ca=cardAmount(r)
               return(
-                <div key={r.id} onClick={()=>setBoardId('operations')}
+                <div key={r.id} onClick={()=>setBoardId(realBoardId)}
                   style={{...cs,borderRadius:7,padding:'8px 10px',cursor:'pointer',opacity:0.92}}
-                  title="В работе на «Исполнении» — открыть доску">
+                  title={`Находится на доске «${realBoardName}» — открыть`}>
                   <div style={{fontWeight:600,fontSize:12,color:'var(--text)',lineHeight:1.3,marginBottom:3}}>{r.number||('№'+r.id)}</div>
                   <div style={{fontSize:11,color:'var(--text3)',marginBottom:3}}>{cName(r.client_id)}</div>
-                  <div style={{fontSize:9,fontWeight:700,color:'#0d9488',background:'#f0fdfa',borderRadius:4,padding:'1px 6px',display:'inline-block',marginBottom:3}}>🏭 {opsStage?.name||r.stage}</div>
+                  <div style={{fontSize:9,fontWeight:700,color:'#0d9488',background:'#f0fdfa',borderRadius:4,padding:'1px 6px',display:'inline-block',marginBottom:3}}>📍 {realBoardName}: {realStage?.name||r.stage}</div>
                   {ca&&<div style={{fontSize:11,fontWeight:600,color:'var(--primary)'}}>{ca.amount.toLocaleString('ru')} ₽{ca.isQuote&&<span style={{fontSize:9,color:'var(--text4)',fontWeight:400,marginLeft:3}}>КП</span>}</div>}
                 </div>
               )

@@ -126,6 +126,7 @@ def run_sqlite_migrations() -> None:
     )
 
     _move_legacy_transferred()
+    _move_completed_to_operation()
     _seed_service_catalog()
     _seed_product_catalog()
     _add_asphalt_subcats()
@@ -146,6 +147,23 @@ def _move_legacy_transferred() -> None:
         conn.execute(text(
             "UPDATE requests SET board_id='operations', stage='china-ordered' "
             "WHERE (board_id IS NULL OR board_id='sales') AND stage='transferred'"
+        ))
+
+
+def _move_completed_to_operation() -> None:
+    """Заказы, завершённые на «Исполнении» (board_id=operations, stage=complete)
+    до появления авто-перехода, переносим в «Эксплуатацию» доски «Постпродажное»
+    (board_id=aftersales, stage=operation). После этого они перестают висеть
+    в «Передан в производство» и отражаются на «Выполнено»/«Эксплуатация».
+    Идемпотентно.
+    """
+    insp = inspect(engine)
+    if "requests" not in insp.get_table_names():
+        return
+    with engine.begin() as conn:
+        conn.execute(text(
+            "UPDATE requests SET board_id='aftersales', stage='operation' "
+            "WHERE board_id='operations' AND stage='complete'"
         ))
 
 
