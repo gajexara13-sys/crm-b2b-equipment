@@ -28,7 +28,7 @@ class CommercialQuote(Base):
     intro_text = Column(Text)
     show_discount_column = Column(Boolean, default=True)
     currency = Column(String, default="RUB")
-    vat_rate = Column(Float, default=20.0)
+    vat_rate = Column(Float, default=22.0)
     fx_rate = Column(Float, default=1.0)
 
     subtotal = Column(Float, default=0.0)

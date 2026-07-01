@@ -24,7 +24,7 @@ class QuoteSenderProfile(Base):
     signature_url = Column(Text)
     stamp_url = Column(Text)
     default_currency = Column(String, default="RUB")
-    vat_rate = Column(Float, default=20.0)
+    vat_rate = Column(Float, default=22.0)
     is_active = Column(Boolean, default=True)
     intro_template = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

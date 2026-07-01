@@ -568,8 +568,8 @@ def build_docxtpl_context(ctx: dict[str, Any]) -> dict[str, Any]:
             or _currency_note(q.get("currency"))
         ),
         "terms_address_note": (q.get("terms_address_note") or "").strip(),
-        "vat_rate": q.get("vat_rate") or 20,
-        "vat_amount": money_ru(max(sum_full - sum_disc, sum_full) * (q.get("vat_rate") or 20) / (100 + (q.get("vat_rate") or 20))),
+        "vat_rate": q.get("vat_rate") or 22,
+        "vat_amount": money_ru(max(sum_full - sum_disc, sum_full) * (q.get("vat_rate") or 22) / (100 + (q.get("vat_rate") or 22))),
         "sender": sender,
         "signer_name": (sender.get("signer_name") or "").strip(),
         "signer_position": (sender.get("signer_position") or "").strip(),
