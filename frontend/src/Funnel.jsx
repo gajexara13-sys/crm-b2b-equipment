@@ -301,9 +301,11 @@ export default function PageFunnel({user}){
         setSel(s=>s&&s.id===req.id?{...s,...data}:s)
       }
       setStageModal(null)
-      // Уведомление клиента при смене этапа на доске Исполнение
-      const resBoard=(data?.board_id||req.board_id||'sales')
-      if(resBoard==='operations'&&OPS_NOTIF_STAGES.includes(targetId)){
+      // Уведомление клиента при смене этапа на доске Исполнение.
+      // Берём доску-источник: этап «Выполнен» переносит карточку в «Постпродажное»,
+      // но уведомление «Заказ выполнен» всё равно нужно показать.
+      const srcBoard=(req.board_id||'sales')
+      if(srcBoard==='operations'&&OPS_NOTIF_STAGES.includes(targetId)){
         const cl=clients.find(c=>c.id===(data?.client_id||req.client_id))
         const msg=buildClientMsg(data||req,targetId,cl)
         if(msg) setNotifModal({req:data||req,stageId:targetId,client:cl,message:msg})
