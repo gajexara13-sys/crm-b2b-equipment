@@ -8,7 +8,7 @@
       "stages": [
         {
           "id": "new",
-          "name": "Новый запрос",
+          "name": "Новый лид",
           "position": 1,
           "color": "gray",
           "type": "initial",
