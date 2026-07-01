@@ -42,6 +42,7 @@ const FIELD_LABELS={
   linked_deal_id:'ID связанной сделки',claim_description:'Описание рекламации',
   resolution_description:'Описание решения',return_reason:'Причина возврата',
   return_date:'Дата возврата к работе',lost_reason:'Причина',
+  lost_comment:'Примечание к отказу',
 }
 const BOOL_FIELDS=['need_confirmed','stock_confirmed','closing_docs_received']
 const DATE_FIELDS=['return_date']
@@ -626,6 +627,11 @@ export default function PageFunnel({user}){
                   <option value="">— выберите причину —</option>
                   {stageModal.lostOpts.map(o=><option key={o} value={o}>{o}</option>)}
                 </select>
+                <label style={{fontSize:12,fontWeight:600,color:'var(--text3)',display:'block',margin:'10px 0 4px'}}>Примечание (необязательно)</label>
+                <textarea value={stageModal.fv.lost_comment||''} rows={2}
+                  onChange={e=>setStageModal(m=>({...m,fv:{...m.fv,lost_comment:e.target.value}}))}
+                  placeholder="Детали отказа, комментарий…"
+                  style={{...inp(),resize:'vertical'}}/>
               </div>
             )}
 

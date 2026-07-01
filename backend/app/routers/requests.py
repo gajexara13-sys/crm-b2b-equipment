@@ -286,7 +286,20 @@ def update_stage(
         raise HTTPException(404, "Заявка не найдена")
     old = r.stage or "new"
     new = body.stage
-    if new != old and user.role in ("manager", "sales"):
+
+    # Статусы-«отстойники» вне воронки: задача на следующий шаг не нужна,
+    # но обязательны свои поля (дата возврата / причина отказа).
+    if new == "nurturing":
+        return_date = (body.extra_fields or {}).get("return_date")
+        if not return_date:
+            raise HTTPException(400, "Для перевода в «Отложенные» укажите дату возврата к работе.")
+    if new == "lost":
+        if not (body.lost_reason or "").strip():
+            raise HTTPException(400, "Для перевода в «Архив/Отказ» укажите причину.")
+
+    # Перевод в отложенные/архив доступен из любой стадии без открытой задачи.
+    NO_TASK_STAGES = {"lost", "nurturing"}
+    if new != old and new not in NO_TASK_STAGES and user.role in ("manager", "sales"):
         has_open = (
             db.query(DealTask)
             .filter(
