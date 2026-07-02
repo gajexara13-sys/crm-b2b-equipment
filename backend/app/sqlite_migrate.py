@@ -107,6 +107,11 @@ def run_sqlite_migrations() -> None:
         "clients",
         [
             ("contact_position", "ALTER TABLE clients ADD COLUMN contact_position TEXT"),
+            ("contact2_name", "ALTER TABLE clients ADD COLUMN contact2_name TEXT"),
+            ("contact2_position", "ALTER TABLE clients ADD COLUMN contact2_position TEXT"),
+            ("contact2_phone", "ALTER TABLE clients ADD COLUMN contact2_phone TEXT"),
+            ("contact2_email", "ALTER TABLE clients ADD COLUMN contact2_email TEXT"),
+            ("extra_contacts_json", "ALTER TABLE clients ADD COLUMN extra_contacts_json TEXT"),
         ],
     )
 

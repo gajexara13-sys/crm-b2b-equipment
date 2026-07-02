@@ -13,5 +13,12 @@ class Client(Base):
     contact_position = Column(String)
     contact_phone    = Column(String)
     contact_email    = Column(String)
+    # Второй контакт (лицо для переговоров/согласования)
+    contact2_name     = Column(String)
+    contact2_position = Column(String)
+    contact2_phone    = Column(String)
+    contact2_email    = Column(String)
+    # Доп. контакты: JSON-список [{name, position, phone, email}, ...]
+    extra_contacts_json = Column(Text)
     notes        = Column(Text)
     created_at   = Column(DateTime(timezone=True), server_default=func.now())
