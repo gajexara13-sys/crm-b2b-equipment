@@ -482,16 +482,25 @@ def build_docxtpl_context(ctx: dict[str, Any]) -> dict[str, Any]:
         qty = float(it.get("quantity") or 1)
         lt = float(it.get("line_total_with_vat") or 0)
         ld = float(it.get("line_total_discounted") or 0)
+        # Старые КП могли не сохранять line_total_discounted — не обнуляем цену.
+        if ld <= 0 and lt > 0:
+            ld = lt
         sum_full += lt
         sum_disc += ld
+        # Цена/стоимость к показу — со скидкой (то, что реально платит клиент).
+        # Многие шаблоны (в т.ч. основной) выводят один ценовой столбец, поэтому в
+        # него подставляем нетто-цену, иначе скидка в КП не отображается.
+        pw_net = (ld / qty) if qty else ld
         qs = str(int(qty)) if float(qty).is_integer() else str(qty)
         spec_rows.append(
             {
                 "no": str(ri),
                 "name": name,
-                "price": money_ru(pw),
+                "price": money_ru(pw_net),
+                "price_gross": money_ru(pw),
                 "qty": qs,
-                "sum_full": money_ru(lt),
+                "sum_full": money_ru(ld),
+                "sum_gross": money_ru(lt),
                 "sum_disc": money_ru(ld),
             }
         )
@@ -552,7 +561,11 @@ def build_docxtpl_context(ctx: dict[str, Any]) -> dict[str, Any]:
         "items": items_out,
         "spec_rows": spec_rows,
         "show_discount_column": show_disc,
-        "sum_total_full": money_ru(sum_full),
+        # sum_total_full = итог к оплате (со скидкой), т.к. основной шаблон выводит
+        # один столбец итога. sum_total_gross — сумма без скидки для шаблонов,
+        # где нужны оба значения.
+        "sum_total_full": money_ru(sum_disc),
+        "sum_total_gross": money_ru(sum_full),
         "sum_total_disc": money_ru(sum_disc),
         "price_col_title": _price_header_currency(q.get("currency")),
         "sum_col_title": _sum_header_currency(q.get("currency")),
@@ -569,7 +582,8 @@ def build_docxtpl_context(ctx: dict[str, Any]) -> dict[str, Any]:
         ),
         "terms_address_note": (q.get("terms_address_note") or "").strip(),
         "vat_rate": q.get("vat_rate") or 22,
-        "vat_amount": money_ru(max(sum_full - sum_disc, sum_full) * (q.get("vat_rate") or 22) / (100 + (q.get("vat_rate") or 22))),
+        # НДС считаем от суммы к оплате (со скидкой).
+        "vat_amount": money_ru(sum_disc * (q.get("vat_rate") or 22) / (100 + (q.get("vat_rate") or 22))),
         "sender": sender,
         "signer_name": (sender.get("signer_name") or "").strip(),
         "signer_position": (sender.get("signer_position") or "").strip(),
