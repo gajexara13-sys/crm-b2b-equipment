@@ -790,8 +790,16 @@ export default function PageFunnel({user}){
 
             <div style={{fontSize:13,color:'var(--text2)',lineHeight:1.8,marginBottom:14,background:'var(--surface2)',borderRadius:8,padding:'10px 12px'}}>
               <div><b>Клиент:</b> {cName(sel.client_id)}</div>
-              {sel.contact_name&&<div><b>Контакт:</b> {sel.contact_name}</div>}
               {sel.material_type&&<div><b>Запрос:</b> {sel.material_type}</div>}
+              {(()=>{
+                const c=clients.find(x=>x.id===sel.client_id)
+                const person=sel.contact_name||c?.contact2_name||c?.contact_name
+                const phone=c?.contact2_phone||c?.contact_phone
+                return <>
+                  {person&&<div><b>Контактное лицо:</b> {person}</div>}
+                  {phone&&<div><b>Телефон:</b> {phone}</div>}
+                </>
+              })()}
               {sel.price&&<div><b>Бюджет:</b> {Number(sel.price).toLocaleString('ru')} ₽</div>}
               {sel.urgency&&sel.urgency!=='normal'&&<div><b>Срочность:</b> {sel.urgency==='urgent'?'🔴 Срочно':'🟡 Высокая'}</div>}
               {sel.notes&&<div><b>Примечание:</b> {sel.notes}</div>}
