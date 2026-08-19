@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
+from typing import Optional
 import bcrypt as _bcrypt_lib
 if not hasattr(_bcrypt_lib, '__about__'):
     class _BcryptAbout:
@@ -58,8 +59,38 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     return {"access_token": create_token({"sub": str(user.id)}), "token_type": "bearer",
             "user": {"id": user.id, "name": user.name, "email": user.email, "role": user.role}}
 
+def _current_user_optional(request: Request, db: Session) -> Optional[User]:
+    """Возвращает пользователя по Bearer-токену либо None (без ошибки)."""
+    auth = request.headers.get("Authorization", "")
+    if not auth.lower().startswith("bearer "):
+        return None
+    token = auth[7:].strip()
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        uid = payload.get("sub")
+        if not uid:
+            return None
+    except JWTError:
+        return None
+    return db.query(User).filter(User.id == int(uid)).first()
+
+
 @router.post("/register")
-def register(name: str, email: str, password: str, role: str = "laborant", db: Session = Depends(get_db)):
+def register(
+    name: str,
+    email: str,
+    password: str,
+    request: Request,
+    role: str = "laborant",
+    db: Session = Depends(get_db),
+):
+    # Публичная регистрация закрыта: создавать пользователей может только админ.
+    # Исключение — первичная настройка: если в системе ещё нет пользователей,
+    # разрешаем создать первого (админа).
+    if db.query(User).count() > 0:
+        current = _current_user_optional(request, db)
+        if not current or current.role != "admin":
+            raise HTTPException(status_code=403, detail="Создавать пользователей может только администратор")
     if db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
     user = User(name=name, email=email, hashed_pwd=hash_password(password), role=role)
